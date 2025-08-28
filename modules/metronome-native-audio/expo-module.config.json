@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["MetronomeNativeAudioModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.metronomenativeaudio.MetronomeNativeAudioModule"]
+  }
+}
