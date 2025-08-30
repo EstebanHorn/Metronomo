@@ -1,159 +1,206 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { View, Button } from "react-native";
-import MetronomeNativeAudio, {
-  addOnBeatListener,
-  OnBeatPayload,
-} from "../modules/metronome-native-audio";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActiveEvent,
-  buildEventsMs,
-  makeSilenceMap,
-  PATTERN,
-  clamp,
-} from "../constants/Pulse";
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+  Platform,
+  Button,
+} from "react-native";
+import * as Metronome from "metronome-native-audio";
+import type { Pulse, Role } from "metronome-native-audio";
+import type { ActiveEvent } from "../types/Metronome";
+import { STRUCTURAL_PATTERN } from "../constants/Pulse";
+import { useTheme } from "../contexts/ThemeContext";
+import { Colors } from "../constants/Colors";
+
+function generatePulses(subdivisions: number[], soundMap: string[][]): Pulse[] {
+  const pulses: Pulse[] = [];
+  subdivisions.forEach((numBeats, sectionIdx) => {
+    const structuralDuration = STRUCTURAL_PATTERN[sectionIdx];
+    const durationPerBeat = structuralDuration / numBeats;
+
+    for (let k = 0; k < numBeats; k++) {
+      let soundType = soundMap[sectionIdx]?.[k] ?? "sub";
+      if (soundType === "sub") {
+        soundType = "normal";
+      }
+
+      pulses.push({
+        durEighths: durationPerBeat,
+        subdiv: 1,
+        role: soundType as Role,
+        pan: 0,
+        sectionIdx: sectionIdx,
+        k: k,
+      });
+    }
+  });
+  return pulses;
+}
+
+// --- FUNCIÓN PROBLEMÁTICA ELIMINADA ---
+// const findBeatFromAbsoluteIndex = ... (la borramos)
 
 type Props = {
   bpm: number;
-  beatsPerCycle: number;
-  subdivs: number[];
-  silenceMap?: boolean[][];
+  subdivisions: number[];
+  soundMap: string[][];
+  onReset?: () => void;
   onActive?: (ev: ActiveEvent | null) => void;
-  initialSubdivs: number[];
-  initialSilenceMap: boolean[][];
-  onReset?: (payload: { subdivs: number[]; silenceMap: boolean[][] }) => void;
 };
-
-const MIN_SUBDIV = 2;
-const MAX_SUBDIV = 5;
 
 export default function VariablePulsePlayer({
   bpm,
-  beatsPerCycle,
-  subdivs,
-  silenceMap,
-  onActive,
-  initialSubdivs,
-  initialSilenceMap,
+  subdivisions,
+  soundMap,
   onReset,
+  onActive,
 }: Props) {
-  const cycleMs = useMemo(
-    () => (60000 / Math.max(1, bpm)) * Math.max(1, beatsPerCycle),
-    [bpm, beatsPerCycle]
-  );
-
-  const safeSubdivs = useMemo(() => {
-    const base = [...subdivs];
-    if (base.length !== 5) {
-      const fill = Array(5).fill(2);
-      for (let i = 0; i < 5; i++)
-        fill[i] = clamp(base[i] ?? 2, MIN_SUBDIV, MAX_SUBDIV);
-      return fill;
-    }
-    return base.map((n) => clamp(n, MIN_SUBDIV, MAX_SUBDIV));
-  }, [subdivs]);
-
-  const safeSilence = useMemo(() => {
-    if (!silenceMap)
-      return makeSilenceMap(safeSubdivs).map((r) => r.map(() => false));
-    return safeSubdivs.map((n, i) => {
-      const row = silenceMap[i] ?? [];
-      const out = Array(n).fill(false) as boolean[];
-      for (let k = 0; k < Math.min(row.length, n); k++) out[k] = !!row[k];
-      return out;
-    });
-  }, [silenceMap, safeSubdivs]);
-
-  const { events, tickMs } = useMemo(
-    () => buildEventsMs({ cycleMs, subdivs: safeSubdivs, pattern: PATTERN }),
-    [cycleMs, safeSubdivs]
-  );
-
+  const theme = useTheme();
+  const styles = getStyles(theme);
   const [running, setRunning] = useState(false);
   const subRef = useRef<{ remove: () => void } | null>(null);
-
-  const configureNative = useCallback(async () => {
-    const ok = await (MetronomeNativeAudio as any).configure?.({
-      bpm,
-      beatsPerCycle,
-      subdivs: safeSubdivs,
-      silenceMap: safeSilence,
-      strongGain: 1.0,
-      subdivGain: 0.6,
-    });
-    return !!ok;
-  }, [bpm, beatsPerCycle, safeSubdivs, safeSilence]);
-
-  // Re-config en frío
-  useEffect(() => {
-    if (!running) configureNative();
-  }, [configureNative, running]);
-
-  const start = useCallback(async () => {
-    const ok = await configureNative();
-    if (!ok) return;
-
-    // Suscribimos onBeat ANTES de arrancar
-    if (subRef.current) {
-      try {
-        subRef.current.remove();
-      } catch {}
-      subRef.current = null;
-    }
-    const sub = addOnBeatListener((ev: OnBeatPayload) => {
-      onActive?.({
-        tMs: ev.tMs,
-        section: ev.section,
-        k: ev.k,
-        type: ev.type,
-        tick: tickMs ? ev.tMs / tickMs : 0,
-      });
-    });
-    subRef.current = { remove: () => sub.remove() };
-
-    try {
-      MetronomeNativeAudio.start();
-      setRunning(true);
-    } catch {}
-  }, [configureNative, onActive, tickMs]);
+  const isInitialMount = useRef(true);
 
   const stop = useCallback(() => {
     try {
-      MetronomeNativeAudio.stop();
+      Metronome.stop();
     } catch {}
-    if (subRef.current) {
-      try {
-        subRef.current.remove();
-      } catch {}
-      subRef.current = null;
-    }
+    if (subRef.current) subRef.current.remove();
     setRunning(false);
     onActive?.(null);
   }, [onActive]);
 
-  useEffect(() => stop, [stop]);
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+    } else {
+      stop();
+    }
+  }, [bpm, subdivisions, stop]);
+
+  const buildAndSetPattern = useCallback(async () => {
+    const newPattern = generatePulses(subdivisions, soundMap);
+    await Metronome.setPattern(newPattern);
+  }, [subdivisions, soundMap]);
+
+  const applyConfig = useCallback(async () => {
+    await Metronome.init({ sampleRate: 48000, bufferFrames: 1024 });
+    await Metronome.setBpm(bpm);
+    await buildAndSetPattern();
+  }, [bpm, buildAndSetPattern]);
+
+  useEffect(() => {
+    void applyConfig();
+  }, [applyConfig]);
+
+  useEffect(() => {
+    Metronome.setBpm(bpm);
+    buildAndSetPattern();
+  }, [bpm, subdivisions, soundMap, buildAndSetPattern]);
+
+  const start = useCallback(async () => {
+    await applyConfig();
+    if (subRef.current) subRef.current.remove();
+
+    // --- RECEPTOR SIMPLIFICADO ---
+    const sub = Metronome.onTick((_bar, section, k, tMsFromNative) => {
+      // Ahora `section` y `k` vienen directos y correctos desde Java.
+      if (soundMap[section]?.[k] !== "silence") {
+        onActive?.({
+          tMs: typeof tMsFromNative === "number" ? tMsFromNative : Date.now(),
+          section: section,
+          k: k,
+          type: k === 0 ? "clave" : "pulse",
+          tick: section + k,
+        });
+      }
+    });
+
+    subRef.current = { remove: () => sub.remove() };
+    Metronome.play();
+    setRunning(true);
+  }, [applyConfig, onActive, soundMap, subdivisions]);
+
+  useEffect(() => () => stop(), [stop]);
 
   const reset = useCallback(() => {
     stop();
-    const subs = [...initialSubdivs];
-    const sils = initialSilenceMap.map((r) => [...r]);
-    onReset?.({ subdivs: subs, silenceMap: sils });
-  }, [stop, initialSubdivs, initialSilenceMap, onReset]);
+    onReset?.();
+  }, [stop, onReset]);
 
   return (
-    <View style={{ alignItems: "center", justifyContent: "center", gap: 8 }}>
+    <View style={styles.container}>
       {!running ? (
-        <Button title="Start" onPress={start} />
+        <TouchableOpacity style={styles.button} onPress={start}>
+          <Text style={styles.buttonText}>Start</Text>
+        </TouchableOpacity>
       ) : (
-        <Button title="Stop" onPress={stop} />
+        <TouchableOpacity
+          style={[styles.button, styles.stopButton]}
+          onPress={stop}
+        >
+          <Text style={[styles.buttonText, styles.stopButtonText]}>Stop</Text>
+        </TouchableOpacity>
       )}
-      <View style={{ height: 6 }} />
-      <Button title="Reset" onPress={reset} />
+      <View style={{ height: 10 }} />
+      <TouchableOpacity style={styles.resetButton} onPress={reset}>
+        <Text style={styles.resetButtonText}>Reset</Text>
+      </TouchableOpacity>
     </View>
   );
 }
+const getStyles = (theme: typeof Colors.light) =>
+  StyleSheet.create({
+    container: {
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      padding: 20,
+      borderRadius: 999, // Círculo
+      backgroundColor: `${theme.background}aa`, // Fondo semi-transparente
+      minWidth: 100,
+      minHeight: 100,
+    },
+    button: {
+      minWidth: 60,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      backgroundColor: theme.tint,
+      borderRadius: 20,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 2,
+      borderColor: theme.metronome.activeGlow,
+      ...(Platform.OS === "ios"
+        ? {
+            shadowColor: theme.text,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 3.84,
+          }
+        : { elevation: 5 }),
+    },
+    buttonText: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: theme.text,
+    },
+    stopButton: {
+      backgroundColor: theme.metronome.sub, // Un color más oscuro para 'Stop'
+      borderColor: theme.text,
+    },
+    stopButtonText: {
+      color: theme.background,
+    },
+    resetButton: {
+      paddingVertical: 4,
+      paddingHorizontal: 12,
+    },
+    resetButtonText: {
+      fontSize: 14,
+      color: theme.metronome.sub,
+      fontWeight: "500",
+    },
+  });

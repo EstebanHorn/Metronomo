@@ -1,1 +1,4 @@
-expo.modules.metronomenativeaudio
+com.metronomenativeaudio
+raw acento_fuerte
+raw pulso_regular
+raw subdivision

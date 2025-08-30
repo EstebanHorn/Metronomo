@@ -1,2 +1,5 @@
 R_DEF: Internal format may change without notice
 local
+raw acento_fuerte
+raw pulso_regular
+raw subdivision

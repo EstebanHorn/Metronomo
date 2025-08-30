@@ -1,0 +1,22 @@
+{
+  "name": "metronome-native-audio",
+  "version": "0.1.0",
+  "main": "plugin/index.js",
+  "react-native": "src/index.ts",
+  "types": "src/index.ts",
+  "files": [
+    "src",
+    "android",
+    "ios",
+    "plugin"
+  ],
+  "peerDependencies": {
+    "react": ">=18",
+    "react-native": ">=0.73"
+  },
+  "expo": {
+    "plugins": [
+      "./plugin"
+    ]
+  }
+}

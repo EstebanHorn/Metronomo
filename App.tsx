@@ -7,32 +7,42 @@ import {
   Platform,
   View,
 } from "react-native";
-import { Colors } from "./constants/Colors"; // ajustá si tu ruta es distinta
-import MetronomeTab from "./screens/MetronomeTab"; // ajustá si tu ruta es distinta
-
-// Opcional: mantener la pantalla despierta mientras practicás
-// Instala expo-keep-awake si aún no está en tu proyecto:
-//   npx expo install expo-keep-awake
+import { Colors } from "./constants/Colors";
+import MetronomeTab from "./screens/MetronomeTab";
+import { useFonts } from "expo-font";
 import { useKeepAwake } from "expo-keep-awake";
+import { ThemeContext } from "./contexts/ThemeContext"; // 1. Importamos el Context
 
 export default function App() {
   const colorScheme = useColorScheme();
-  useKeepAwake(); // evita que el teléfono se bloquee mientras corre el metrónomo
+  useKeepAwake();
 
-  const isDark = colorScheme === "dark";
-  const bg =
-    (isDark ? Colors.dark?.background : Colors.light?.background) || "#0b0b0b";
-  const barStyle = isDark ? "light-content" : "dark-content";
+  // 2. Determinamos el objeto de tema completo a usar
+  const theme = colorScheme === "dark" ? Colors.dark : Colors.light;
+  const barStyle = colorScheme === "dark" ? "light-content" : "dark-content";
 
+  const [loaded] = useFonts({
+    SpaceMono: require("./assets/fonts/Nexa-ExtraLight.ttf"),
+  });
+
+  if (!loaded) {
+    return null;
+  }
+
+  // 3. Envolvemos la app con el ThemeContext.Provider
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: bg }}>
-      <StatusBar
-        barStyle={barStyle}
-        backgroundColor={Platform.OS === "android" ? bg : undefined}
-      />
-      <View style={{ flex: 1, backgroundColor: bg }}>
-        <MetronomeTab />
-      </View>
-    </SafeAreaView>
+    <ThemeContext.Provider value={theme}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+        <StatusBar
+          barStyle={barStyle}
+          backgroundColor={
+            Platform.OS === "android" ? theme.background : undefined
+          }
+        />
+        <View style={{ flex: 1, backgroundColor: theme.background }}>
+          <MetronomeTab />
+        </View>
+      </SafeAreaView>
+    </ThemeContext.Provider>
   );
 }
