@@ -7,7 +7,9 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "plugins": ["metronome-native-audio"],
+    "plugins": [
+      "metronome-native-audio"
+    ],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -26,6 +28,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "87d06d26-38a0-40e4-96bc-0dc1c8084606"
+      }
     }
   }
 }

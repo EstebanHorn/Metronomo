@@ -1,24 +1,33 @@
 apply plugin: 'com.android.library'
 
-android {
-  namespace "com.metronomenativeaudio"   // <— IMPORTANTE: igual al package Java
-  compileSdkVersion 35
-
-  defaultConfig {
-    minSdkVersion 24
-    targetSdkVersion 35
-    consumerProguardFiles 'consumer-rules.pro'
-  }
-
-  sourceSets {
-    main {
-      java.srcDirs = ['src/main/java']
-      manifest.srcFile 'src/main/AndroidManifest.xml'
-      res.srcDirs = ['src/main/res']
-    }
-  }
+def getExtOrDefault(name) {
+    return rootProject.hasProperty(name) ? rootProject.getProperty(name) : project.properties[name]
 }
 
+android {
+    namespace "com.metronomenativeaudio"
+    
+    compileSdkVersion getExtOrDefault('compileSdkVersion')
+    buildToolsVersion getExtOrDefault('buildToolsVersion')
+
+    defaultConfig {
+        minSdkVersion getExtOrDefault('minSdkVersion')
+        targetSdkVersion getExtOrDefault('targetSdkVersion')
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    lintOptions {
+        abortOnError false
+    }
+}
+
+// --- CORRECCIÓN AQUÍ: AÑADIMOS LA DEPENDENCIA A REACT NATIVE ---
 dependencies {
-  implementation 'com.facebook.react:react-android:+'
+    // Esta línea le da a nuestro módulo acceso a todas las clases de React Native
+    implementation "com.facebook.react:react-android"
 }
