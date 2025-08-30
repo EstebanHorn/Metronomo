@@ -1,4 +1,3 @@
-// App.tsx
 import React from "react";
 import {
   SafeAreaView,
@@ -8,16 +7,15 @@ import {
   View,
 } from "react-native";
 import { Colors } from "./constants/Colors";
-import MetronomeTab from "./screens/MetronomeTab";
 import { useFonts } from "expo-font";
 import { useKeepAwake } from "expo-keep-awake";
-import { ThemeContext } from "./contexts/ThemeContext"; // 1. Importamos el Context
+import { ThemeContext } from "./contexts/ThemeContext";
+import AppNavigator from "./navigation/AppNavigator";
 
 export default function App() {
   const colorScheme = useColorScheme();
   useKeepAwake();
 
-  // 2. Determinamos el objeto de tema completo a usar
   const theme = colorScheme === "dark" ? Colors.dark : Colors.light;
   const barStyle = colorScheme === "dark" ? "light-content" : "dark-content";
 
@@ -25,11 +23,8 @@ export default function App() {
     SpaceMono: require("./assets/fonts/Nexa-ExtraLight.ttf"),
   });
 
-  if (!loaded) {
-    return null;
-  }
+  if (!loaded) return null;
 
-  // 3. Envolvemos la app con el ThemeContext.Provider
   return (
     <ThemeContext.Provider value={theme}>
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
@@ -40,7 +35,7 @@ export default function App() {
           }
         />
         <View style={{ flex: 1, backgroundColor: theme.background }}>
-          <MetronomeTab />
+          <AppNavigator />
         </View>
       </SafeAreaView>
     </ThemeContext.Provider>

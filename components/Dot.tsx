@@ -32,7 +32,8 @@ const Dot = React.memo(function Dot({
       shadowRadius: 12,
     },
     android: {
-      elevation: 12,
+      boxShadow: `0px 4px 8px 2px ${theme.metronome.activeGlow}`,
+      backgroundColor: theme.metronome.activeGlow,
     },
   });
 

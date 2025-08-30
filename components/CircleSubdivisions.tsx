@@ -1,9 +1,11 @@
 import React, { useMemo, useRef, useEffect } from "react";
 import { StyleSheet, View } from "react-native";
-import { sectionsFromPattern, STRUCTURAL_PATTERN } from "../constants/Pulse";
+import { sectionsFromPattern } from "../constants/Pulse";
 import type { ActiveEvent } from "../types/Metronome";
 import Dot from "./Dot";
 import { useTheme } from "../contexts/ThemeContext";
+
+export type SoundType = "clave" | "sub" | "accent" | "silence";
 
 type DotData = {
   key: string;
@@ -18,6 +20,7 @@ type Props = {
   size?: number;
   cycleMs: number;
   subdivisions: number[];
+  structuralPattern: readonly number[];
   activeEvent: ActiveEvent | null;
   soundMap: string[][];
   onDotPress: (sectionIdx: number, k: number) => void;
@@ -27,6 +30,7 @@ export default function CircleSubdivisions({
   size = 360,
   cycleMs,
   subdivisions,
+  structuralPattern,
   activeEvent,
   soundMap,
   onDotPress,
@@ -41,8 +45,8 @@ export default function CircleSubdivisions({
   }, [onDotPress]);
 
   const sections = useMemo(
-    () => sectionsFromPattern({ cycleMs, pattern: STRUCTURAL_PATTERN }),
-    [cycleMs]
+    () => sectionsFromPattern({ cycleMs, pattern: structuralPattern }),
+    [cycleMs, structuralPattern]
   );
 
   const dotsData = useMemo(() => {
@@ -83,7 +87,7 @@ export default function CircleSubdivisions({
         const isActive =
           activeEvent?.section === d.sectionIdx && activeEvent?.k === d.k;
 
-        const soundType = soundMap[d.sectionIdx]?.[d.k] ?? "sub";
+        const soundType = (soundMap[d.sectionIdx]?.[d.k] ?? "sub") as SoundType;
         const isSilenced = soundType === "silence";
 
         const bgColor = isActive

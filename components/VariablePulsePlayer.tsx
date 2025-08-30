@@ -5,45 +5,43 @@ import {
   TouchableOpacity,
   Text,
   Platform,
-  Button,
 } from "react-native";
 import * as Metronome from "metronome-native-audio";
 import type { Pulse, Role } from "metronome-native-audio";
 import type { ActiveEvent } from "../types/Metronome";
-import { STRUCTURAL_PATTERN } from "../constants/Pulse";
 import { useTheme } from "../contexts/ThemeContext";
 import { Colors } from "../constants/Colors";
 
-function generatePulses(subdivisions: number[], soundMap: string[][]): Pulse[] {
+function generatePulses(
+  structuralPattern: readonly number[],
+  subdivisions: number[],
+  soundMap: string[][]
+): Pulse[] {
   const pulses: Pulse[] = [];
   subdivisions.forEach((numBeats, sectionIdx) => {
-    const structuralDuration = STRUCTURAL_PATTERN[sectionIdx];
-    const durationPerBeat = structuralDuration / numBeats;
+    const structuralDuration = structuralPattern[sectionIdx];
+    const durationPerBeat = structuralDuration / numBeats; // en octavos
 
     for (let k = 0; k < numBeats; k++) {
-      let soundType = soundMap[sectionIdx]?.[k] ?? "sub";
-      if (soundType === "sub") {
-        soundType = "normal";
-      }
+      let soundType = (soundMap[sectionIdx]?.[k] ?? "sub") as string;
+      if (soundType === "sub") soundType = "normal";
 
       pulses.push({
         durEighths: durationPerBeat,
         subdiv: 1,
         role: soundType as Role,
         pan: 0,
-        sectionIdx: sectionIdx,
-        k: k,
+        sectionIdx,
+        k,
       });
     }
   });
   return pulses;
 }
 
-// --- FUNCIÓN PROBLEMÁTICA ELIMINADA ---
-// const findBeatFromAbsoluteIndex = ... (la borramos)
-
 type Props = {
   bpm: number;
+  structuralPattern: readonly number[];
   subdivisions: number[];
   soundMap: string[][];
   onReset?: () => void;
@@ -52,6 +50,7 @@ type Props = {
 
 export default function VariablePulsePlayer({
   bpm,
+  structuralPattern,
   subdivisions,
   soundMap,
   onReset,
@@ -63,7 +62,7 @@ export default function VariablePulsePlayer({
   const subRef = useRef<{ remove: () => void } | null>(null);
   const isInitialMount = useRef(true);
 
-  const stop = useCallback(() => {
+  const stop = React.useCallback(() => {
     try {
       Metronome.stop();
     } catch {}
@@ -78,12 +77,16 @@ export default function VariablePulsePlayer({
     } else {
       stop();
     }
-  }, [bpm, subdivisions, stop]);
+  }, [bpm, subdivisions, structuralPattern, stop]);
 
   const buildAndSetPattern = useCallback(async () => {
-    const newPattern = generatePulses(subdivisions, soundMap);
+    const newPattern = generatePulses(
+      structuralPattern,
+      subdivisions,
+      soundMap
+    );
     await Metronome.setPattern(newPattern);
-  }, [subdivisions, soundMap]);
+  }, [structuralPattern, subdivisions, soundMap]);
 
   const applyConfig = useCallback(async () => {
     await Metronome.init({ sampleRate: 48000, bufferFrames: 1024 });
@@ -98,21 +101,25 @@ export default function VariablePulsePlayer({
   useEffect(() => {
     Metronome.setBpm(bpm);
     buildAndSetPattern();
-  }, [bpm, subdivisions, soundMap, buildAndSetPattern]);
+  }, [bpm, subdivisions, structuralPattern, soundMap, buildAndSetPattern]);
 
   const start = useCallback(async () => {
     await applyConfig();
     if (subRef.current) subRef.current.remove();
 
-    // --- RECEPTOR SIMPLIFICADO ---
     const sub = Metronome.onTick((_bar, section, k, tMsFromNative) => {
-      // Ahora `section` y `k` vienen directos y correctos desde Java.
       if (soundMap[section]?.[k] !== "silence") {
         onActive?.({
           tMs: typeof tMsFromNative === "number" ? tMsFromNative : Date.now(),
-          section: section,
-          k: k,
-          type: k === 0 ? "clave" : "pulse",
+          section,
+          k,
+          type: ((): ActiveEvent["type"] => {
+            const sm = soundMap[section]?.[k];
+            if (sm === "clave") return "clave";
+            if (sm === "accent") return "accent";
+            if (sm === "silence") return "silence";
+            return "pulse"; // "sub" -> "pulse"
+          })(),
           tick: section + k,
         });
       }
@@ -121,7 +128,7 @@ export default function VariablePulsePlayer({
     subRef.current = { remove: () => sub.remove() };
     Metronome.play();
     setRunning(true);
-  }, [applyConfig, onActive, soundMap, subdivisions]);
+  }, [applyConfig, onActive, soundMap]);
 
   useEffect(() => () => stop(), [stop]);
 
@@ -151,6 +158,7 @@ export default function VariablePulsePlayer({
     </View>
   );
 }
+
 const getStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
     container: {
@@ -158,8 +166,8 @@ const getStyles = (theme: typeof Colors.light) =>
       justifyContent: "center",
       gap: 8,
       padding: 20,
-      borderRadius: 999, // Círculo
-      backgroundColor: `${theme.background}aa`, // Fondo semi-transparente
+      borderRadius: 999,
+      backgroundColor: `${theme.background}aa`,
       minWidth: 100,
       minHeight: 100,
     },
@@ -188,7 +196,7 @@ const getStyles = (theme: typeof Colors.light) =>
       color: theme.text,
     },
     stopButton: {
-      backgroundColor: theme.metronome.sub, // Un color más oscuro para 'Stop'
+      backgroundColor: theme.metronome.sub,
       borderColor: theme.text,
     },
     stopButtonText: {

@@ -1,3 +1,4 @@
+// screens/MetronomeModeScreen.tsx
 import { Colors } from "../constants/Colors";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -11,37 +12,41 @@ import {
   Platform,
 } from "react-native";
 import VariablePulsePlayer from "../components/VariablePulsePlayer";
-import {
-  STRUCTURAL_PATTERN,
-  SECTION_NAMES,
-  INITIAL_SUBDIVISIONS,
-} from "../constants/Pulse";
+import { DEFAULTS, Mode, SECTION_NAMES } from "../constants/Pulse";
 import CircleSubdivisions from "../components/CircleSubdivisions";
 import type { ActiveEvent } from "../types/Metronome";
 import { useTheme } from "../contexts/ThemeContext";
 
-type SoundType = "clave" | "sub" | "accent" | "silence";
+export type SoundType = "clave" | "sub" | "accent" | "silence";
 
-const initializeSoundMap = (pattern: readonly number[]): SoundType[][] => {
-  return pattern.map((numBeats) =>
+const initializeSoundMap = (pattern: readonly number[]): SoundType[][] =>
+  pattern.map((numBeats) =>
     Array.from({ length: numBeats }, (_, k) => (k === 0 ? "clave" : "sub"))
   );
-};
 
-const totalStructuralUnits = STRUCTURAL_PATTERN.reduce((a, b) => a + b, 0);
+type Props = { mode: Mode; onBack?: () => void };
 
-export default function MetronomeTab() {
-  const theme = useTheme(); // Obtenemos el tema del contexto
+export default function MetronomeModeScreen({ mode, onBack }: Props) {
+  const theme = useTheme();
   const { width } = useWindowDimensions();
+
+  const structuralPattern = DEFAULTS[mode].STRUCTURAL_PATTERN;
+
   const [bpm, setBpm] = useState<number>(110);
   const [subdivisions, setSubdivisions] = useState<number[]>([
-    ...INITIAL_SUBDIVISIONS,
+    ...DEFAULTS[mode].INITIAL_SUBDIVISIONS,
   ]);
 
   const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null);
   const [soundMap, setSoundMap] = useState<SoundType[][]>(() =>
-    initializeSoundMap(INITIAL_SUBDIVISIONS)
+    initializeSoundMap(DEFAULTS[mode].INITIAL_SUBDIVISIONS)
   );
+
+  useEffect(() => {
+    const nextSubs = [...DEFAULTS[mode].INITIAL_SUBDIVISIONS];
+    setSubdivisions(nextSubs);
+    setSoundMap(initializeSoundMap(nextSubs));
+  }, [mode]);
 
   useEffect(() => {
     setSoundMap((prev) =>
@@ -50,17 +55,21 @@ export default function MetronomeTab() {
         const newRow: SoundType[] = Array.from({ length: n }, (_, k) =>
           k === 0 ? "clave" : "sub"
         );
-        for (let k = 0; k < Math.min(oldRow.length, newRow.length); k++) {
-          newRow[k] = oldRow[k];
-        }
+        for (let k = 0; k < Math.min(oldRow.length, newRow.length); k++)
+          newRow[k] = oldRow[k] as SoundType;
         return newRow;
       })
     );
   }, [subdivisions]);
 
+  const totalStructuralUnits = useMemo(
+    () => structuralPattern.reduce((a, b) => a + b, 0),
+    [structuralPattern]
+  );
+
   const cycleMs = useMemo(
     () => (60000 / bpm) * (totalStructuralUnits / 2),
-    [bpm]
+    [bpm, totalStructuralUnits]
   );
 
   const clampBpm = (x: number) =>
@@ -83,12 +92,11 @@ export default function MetronomeTab() {
       prev.map((row, i) => {
         if (i !== sectionIdx) return row;
         const nextRow = [...row];
-        const currentSound = nextRow[k];
+        const currentSound = nextRow[k] as SoundType;
         let nextSound: SoundType = currentSound;
 
         if (k === 0) {
-          if (currentSound === "clave") nextSound = "silence";
-          else nextSound = "clave";
+          nextSound = currentSound === "clave" ? "silence" : "clave";
         } else {
           if (currentSound === "sub") nextSound = "accent";
           else if (currentSound === "accent") nextSound = "silence";
@@ -101,19 +109,29 @@ export default function MetronomeTab() {
   };
 
   const onReset = () => {
-    setSubdivisions([...INITIAL_SUBDIVISIONS]);
-    setSoundMap(initializeSoundMap(INITIAL_SUBDIVISIONS));
+    const nextSubs = [...DEFAULTS[mode].INITIAL_SUBDIVISIONS];
+    setSubdivisions(nextSubs);
+    setSoundMap(initializeSoundMap(nextSubs));
   };
 
   const PATTERN_CHOICES = [2, 3, 4, 5];
   const circleSize = Math.max(220, Math.min(width - 40, 520));
-
-  // Pasamos el tema a la función que crea los estilos
   const styles = getStyles(theme);
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       <View style={styles.main}>
+        <View style={styles.headerRow}>
+          {onBack && (
+            <TouchableOpacity style={styles.backBtn} onPress={onBack}>
+              <Text style={styles.backBtnText}>← Inicio</Text>
+            </TouchableOpacity>
+          )}
+          <Text style={styles.title}>
+            {mode === "binary" ? "Binario" : "Ternario"}
+          </Text>
+        </View>
+
         <View style={styles.bpmContainer}>
           <Text style={styles.bpmLabel}>BPM:</Text>
           <View style={styles.bpmButtonsRow}>
@@ -152,6 +170,7 @@ export default function MetronomeTab() {
               size={circleSize}
               cycleMs={cycleMs}
               subdivisions={subdivisions}
+              structuralPattern={structuralPattern}
               activeEvent={activeEvent}
               soundMap={soundMap}
               onDotPress={onDotPress}
@@ -159,6 +178,7 @@ export default function MetronomeTab() {
             <View style={styles.playOverlay} pointerEvents="box-none">
               <VariablePulsePlayer
                 bpm={bpm}
+                structuralPattern={structuralPattern}
                 subdivisions={subdivisions}
                 soundMap={soundMap}
                 onActive={setActiveEvent}
@@ -199,12 +219,38 @@ export default function MetronomeTab() {
 
 const getStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
-    scrollContainer: { flexGrow: 1, justifyContent: "center" },
+    scrollContainer: {
+      flexGrow: 1,
+      justifyContent: "center",
+      marginTop: 20,
+    },
     main: {
       paddingVertical: 20,
       paddingHorizontal: 10,
       backgroundColor: theme.background,
       alignItems: "center",
+      width: "100%",
+    },
+    headerRow: {
+      width: "100%",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    backBtn: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.metronome.muted,
+    },
+    backBtnText: { color: theme.text },
+    title: {
+      textAlign: "right",
+      flex: 1,
+      fontSize: 18,
+      fontWeight: "700",
+      color: theme.text,
     },
     bpmContainer: { marginBottom: 20, gap: 8, alignItems: "center" },
     bpmLabel: { fontSize: 16, fontWeight: "600", color: theme.text },
@@ -222,11 +268,7 @@ const getStyles = (theme: typeof Colors.light) =>
       backgroundColor: theme.background,
       color: theme.text,
     },
-    infoText: {
-      marginTop: 6,
-      fontSize: 16,
-      color: theme.metronome.sub,
-    },
+    infoText: { marginTop: 6, fontSize: 16, color: theme.metronome.sub },
     beatsContainer: {
       alignItems: "center",
       gap: 30,
@@ -242,7 +284,8 @@ const getStyles = (theme: typeof Colors.light) =>
     selectorGrid: { gap: 10, width: "100%", maxWidth: 320 },
     selectorRow: {
       flexDirection: "row",
-      justifyContent: "space-between",
+      justifyContent: "center",
+      gap: 16,
       alignItems: "center",
       paddingVertical: 4,
     },
@@ -290,9 +333,5 @@ const getStyles = (theme: typeof Colors.light) =>
           }
         : { elevation: 5 }),
     },
-    btnText: {
-      fontSize: 14,
-      fontWeight: "bold",
-      color: theme.text,
-    },
+    btnText: { fontSize: 14, fontWeight: "bold", color: theme.text },
   });
