@@ -13,7 +13,7 @@ type Props = {
   onBpmChange: (bpm: number) => void;
   min?: number;
   max?: number;
-  title?: string; // opcional, texto del botón
+  title?: string;
 };
 
 export default function TapTempo({
@@ -23,7 +23,6 @@ export default function TapTempo({
   title = "TAP",
 }: Props) {
   const theme = useTheme();
-  const [currentBpm, setCurrentBpm] = useState<number | null>(null);
   const tapsRef = useRef<number[]>([]);
 
   const clamp = (x: number) => Math.max(min, Math.min(max, Math.round(x || 0)));
@@ -56,14 +55,8 @@ export default function TapTempo({
 
     const bpm = computeBpm(taps);
     if (bpm) {
-      setCurrentBpm(bpm);
       onBpmChange(bpm);
     }
-  };
-
-  const handleLongPress = () => {
-    tapsRef.current = [];
-    setCurrentBpm(null);
   };
 
   const styles = getStyles(theme);
@@ -72,18 +65,12 @@ export default function TapTempo({
     <View style={styles.container}>
       <TouchableOpacity
         onPress={handleTap}
-        onLongPress={handleLongPress}
         delayLongPress={400}
         style={styles.tapButton}
         activeOpacity={0.85}
       >
         <Text style={styles.tapText}>{title}</Text>
       </TouchableOpacity>
-
-      <Text style={styles.subtext}>
-        {currentBpm ? `${currentBpm} BPM` : "Tocá para marcar tempo"}
-      </Text>
-      <Text style={styles.hint}>Mantener para limpiar</Text>
     </View>
   );
 }

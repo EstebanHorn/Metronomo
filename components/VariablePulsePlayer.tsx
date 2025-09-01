@@ -13,10 +13,14 @@ import type { ActiveEvent } from "../types/Metronome";
 import { useTheme } from "../contexts/ThemeContext";
 import { Colors } from "../constants/Colors";
 
+// --- utils ---
 function soundToRole(s: string): Role {
+  // Conservamos roles explícitos para que el motor use el sample correcto
   if (s === "clave") return "clave" as Role;
+  if (s === "accent") return "accent" as Role;
   if (s === "silence") return "silence" as Role;
-  return "normal" as Role; // resto = sub/normal
+  // "sub" y cualquier otro cae en "normal"
+  return "normal" as Role;
 }
 
 function generatePulses(
@@ -34,7 +38,7 @@ function generatePulses(
       pulses.push({
         durEighths: durationPerBeat,
         subdiv: 1,
-        role,
+        role, // <-- ahora respeta "accent"
         pan: 0,
         sectionIdx,
         k,
@@ -120,8 +124,8 @@ export default function VariablePulsePlayer({
     }
   }, [bpm, subdivisions, structuralPattern, phaseUnits, stop]);
 
+  // Actualiza BPM y patrón sin reiniciar si corre
   useEffect(() => {
-    // Actualiza BPM y patrón sin reiniciar si corre
     Metronome.setBpm(bpm);
     buildAndSetPattern();
   }, [
@@ -141,7 +145,7 @@ export default function VariablePulsePlayer({
       const s = (soundMap[section]?.[k] ?? "sub") as string;
       if (s !== "silence") {
         const normalizedType: ActiveEvent["type"] =
-          s === "clave" ? "clave" : "pulse";
+          s === "clave" ? "clave" : s === "accent" ? "accent" : "pulse";
         onActive?.({
           tMs: typeof tMsFromNative === "number" ? tMsFromNative : Date.now(),
           section,

@@ -15,6 +15,7 @@ import { PRESETS, type PresetId, SECTION_NAMES } from "../constants/presets";
 import type { ActiveEvent } from "../types/Metronome";
 import BpmWheel from "../components/BpmWheel";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import TapTempo from "../components/TapTempo";
 
 type SoundType =
   | "clave"
@@ -129,29 +130,13 @@ export default function MetronomeModeScreen({
         </View>
 
         <View style={styles.bpmContainer}>
-          <View style={styles.bpmButtonsRow}>
-            <TouchableOpacity onPress={() => bpmMinus(1)} style={styles.btn}>
-              <Text style={styles.btnText}>-1</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => bpmMinus(5)} style={styles.btn}>
-              <Text style={styles.btnText}>-5</Text>
-            </TouchableOpacity>
-
-            {/* Rueda scrolleable de BPM */}
-            <BpmWheel
-              value={bpm}
-              onChange={(n) => setBpm(clampBpm(n))}
-              min={30}
-              max={300}
-            />
-
-            <TouchableOpacity onPress={() => bpmPlus(5)} style={styles.btn}>
-              <Text style={styles.btnText}>+5</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => bpmPlus(1)} style={styles.btn}>
-              <Text style={styles.btnText}>+1</Text>
-            </TouchableOpacity>
-          </View>
+          <BpmWheel
+            value={bpm}
+            onChange={(n) => setBpm(clampBpm(n))}
+            min={30}
+            max={300}
+          />
+          <TapTempo onBpmChange={(n) => setBpm(n)} min={30} max={300} />
         </View>
 
         <View style={styles.beatsContainer}>
@@ -177,7 +162,6 @@ export default function MetronomeModeScreen({
                 structuralPattern={preset.STRUCTURAL_PATTERN}
                 subdivisions={subdivisions}
                 soundMap={soundMap}
-                phaseUnits={preset.PHASE_UNITS}
                 onActive={setActiveEvent}
                 onReset={onReset}
               />
@@ -243,9 +227,14 @@ const getStyles = (theme: typeof Colors.light) =>
     },
     title: { fontSize: 18, fontWeight: "700", color: theme.text },
 
-    bpmContainer: { marginBottom: 20, gap: 8, alignItems: "center" },
+    bpmContainer: {
+      marginBottom: 20,
+      gap: 8,
+      alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "center",
+    },
     bpmLabel: { fontSize: 16, fontWeight: "600", color: theme.text },
-    bpmButtonsRow: { flexDirection: "row", alignItems: "center", gap: 8 },
 
     infoText: { marginTop: 6, fontSize: 16, color: theme.metronome.sub },
 

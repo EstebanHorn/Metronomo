@@ -1,4 +1,3 @@
-// components/BpmWheel.tsx
 import React, {
   useMemo,
   useRef,
@@ -35,46 +34,53 @@ export default function BpmWheel({
 }: Props) {
   const theme = useTheme();
   const listRef = useRef<FlatList<number>>(null);
+  const userIsScrolling = useRef(false);
 
-  // 5 filas visibles: dos arriba, una central, dos abajo
   const visibleRows = 3;
-  const centerRow = Math.floor(visibleRows / 2); // 2
+  const centerRow = Math.floor(visibleRows / 2);
   const containerHeight = itemHeight * visibleRows;
 
   const data = useMemo(() => {
     const arr = Array.from({ length: max - min + 1 }, (_, i) => i + min);
-    const pad = new Array(centerRow).fill(NaN); // 2 fantasma arriba y abajo
+    const pad = new Array(centerRow).fill(NaN);
     return [...pad, ...arr, ...pad];
   }, [min, max, centerRow]);
 
-  const initialIndex = value - min + centerRow;
+  const initialIndex = value - min;
 
   useEffect(() => {
-    const targetIndex = value - min + centerRow;
+    userIsScrolling.current = false;
+    const targetIndex = value - min;
     listRef.current?.scrollToOffset({
       offset: targetIndex * itemHeight,
-      animated: false,
+      animated: true,
     });
   }, [value, min, itemHeight, centerRow]);
 
   const onMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!userIsScrolling.current) {
+      return;
+    }
+    userIsScrolling.current = false;
+
     const y = e.nativeEvent.contentOffset.y;
     const rawIndex = Math.round(y / itemHeight);
-    const numIndex = rawIndex - centerRow; // quitar padding superior
-    const next = Math.max(min, Math.min(max, min + numIndex));
+    const next = Math.max(min, Math.min(max, min + rawIndex));
     if (Number.isFinite(next)) onChange(next);
   };
 
-  // Para resaltar el centro en tiempo real
+  const handleScrollBegin = () => {
+    userIsScrolling.current = true;
+  };
+
   const [offsetY, setOffsetY] = useState(0);
   const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     setOffsetY(e.nativeEvent.contentOffset.y);
   }, []);
 
-  // opacidad y tamaño en función de la distancia al centro (0 = centro)
   const getItemStyle = (index: number) => {
-    const currentIndexFloat = offsetY / itemHeight; // índice superior “virtual”
-    const dist = Math.abs(index - currentIndexFloat - centerRow); // 0 en el centro
+    const currentIndexFloat = offsetY / itemHeight;
+    const dist = Math.abs(index - currentIndexFloat - centerRow);
 
     let opacity = 0.25;
     if (dist < 0.5) opacity = 1;
@@ -102,7 +108,6 @@ export default function BpmWheel({
 
   return (
     <View style={[styles.wrap, { height: containerHeight }]}>
-      {/* Indicador central */}
       <View
         pointerEvents="none"
         style={[
@@ -122,6 +127,7 @@ export default function BpmWheel({
         showsVerticalScrollIndicator={false}
         snapToInterval={itemHeight}
         decelerationRate={Platform.OS === "ios" ? 0.98 : "fast"}
+        onScrollBeginDrag={handleScrollBegin}
         onMomentumScrollEnd={onMomentumEnd}
         onScroll={onScroll}
         scrollEventThrottle={16}
