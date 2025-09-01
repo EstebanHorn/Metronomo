@@ -1,14 +1,15 @@
 {
   "expo": {
-    "name": "metronomo",
-    "slug": "metronomo",
-    "version": "1.0.0",
+    "name": "Metro clave",
+    "slug": "Metroclave",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "plugins": [
-      "metronome-native-audio"
+      "metronome-native-audio",
+      "react-native-edge-to-edge"
     ],
     "splash": {
       "image": "./assets/splash-icon.png",

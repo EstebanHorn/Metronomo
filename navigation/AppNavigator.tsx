@@ -1,24 +1,26 @@
-// navigation/AppNavigator.tsx
 import React, { useState } from "react";
-import { SafeAreaView } from "react-native";
+import { View } from "react-native";
 import StartScreen from "../screens/StartScreen";
 import MetronomeModeScreen from "../screens/MetronomeModeScreen";
-import type { Mode } from "../constants/Pulse";
+import type { PresetId } from "../constants/presets";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function AppNavigator() {
-  const [route, setRoute] = useState<"home" | Mode>("home");
+  const [route, setRoute] = useState<
+    { name: "home" } | { name: "preset"; id: PresetId }
+  >({ name: "home" });
 
-  if (route === "home") {
-    return (
-      <SafeAreaView style={{ flex: 1 }}>
-        <StartScreen onPick={(m) => setRoute(m)} />
-      </SafeAreaView>
-    );
-  }
-
+  const insets = useSafeAreaInsets();
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <MetronomeModeScreen mode={route} onBack={() => setRoute("home")} />
-    </SafeAreaView>
+    <View style={{ paddingTop: insets.top, flex: 1 }}>
+      {route.name === "home" ? (
+        <StartScreen onPick={(id) => setRoute({ name: "preset", id })} />
+      ) : (
+        <MetronomeModeScreen
+          presetId={route.id}
+          onBack={() => setRoute({ name: "home" })}
+        />
+      )}
+    </View>
   );
 }

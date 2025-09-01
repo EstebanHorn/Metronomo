@@ -31,7 +31,7 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 }
 expoAutolinking.useExpoModules()
 
-rootProject.name = 'metronomo'
+rootProject.name = 'Metro clave'
 
 expoAutolinking.useExpoVersionCatalog()
 

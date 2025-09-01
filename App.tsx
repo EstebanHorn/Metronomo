@@ -11,6 +11,7 @@ import { useFonts } from "expo-font";
 import { useKeepAwake } from "expo-keep-awake";
 import { ThemeContext } from "./contexts/ThemeContext";
 import AppNavigator from "./navigation/AppNavigator";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export default function App() {
   const colorScheme = useColorScheme();
@@ -27,7 +28,7 @@ export default function App() {
 
   return (
     <ThemeContext.Provider value={theme}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+      <SafeAreaProvider style={{ flex: 1, backgroundColor: theme.background }}>
         <StatusBar
           barStyle={barStyle}
           backgroundColor={
@@ -37,7 +38,7 @@ export default function App() {
         <View style={{ flex: 1, backgroundColor: theme.background }}>
           <AppNavigator />
         </View>
-      </SafeAreaView>
+      </SafeAreaProvider>
     </ThemeContext.Provider>
   );
 }

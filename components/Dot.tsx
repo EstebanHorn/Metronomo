@@ -1,5 +1,12 @@
+// Dot.tsx
 import React, { useMemo } from "react";
-import { TouchableOpacity, StyleSheet, Platform } from "react-native";
+import {
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+  Text,
+  View,
+} from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
 import { Colors } from "../constants/Colors";
 
@@ -11,6 +18,9 @@ type DotProps = {
   isActive: boolean;
   isSilenced: boolean;
   onPress: () => void;
+  label?: string;
+  labelX?: number;
+  labelY?: number;
 };
 
 const Dot = React.memo(function Dot({
@@ -21,6 +31,9 @@ const Dot = React.memo(function Dot({
   isActive,
   isSilenced,
   onPress,
+  label,
+  labelX,
+  labelY,
 }: DotProps) {
   const theme = useTheme();
 
@@ -44,9 +57,7 @@ const Dot = React.memo(function Dot({
       shadowOpacity: 0.3,
       shadowRadius: 2,
     },
-    android: {
-      elevation: 4,
-    },
+    android: { elevation: 4 },
   });
 
   const styles = useMemo(() => getStyles(theme), [theme]);
@@ -55,8 +66,8 @@ const Dot = React.memo(function Dot({
     () => [
       styles.dot,
       {
-        left: x - 8.5,
-        top: y - 13.5,
+        left: x - 9.5,
+        top: y - 14.5,
         transform: [{ rotate: `${deg}deg` }],
         backgroundColor: bgColor,
       },
@@ -77,11 +88,21 @@ const Dot = React.memo(function Dot({
   );
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={onPress}
-      style={dynamicStyle}
-    />
+    <>
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={onPress}
+        style={dynamicStyle}
+      />
+      {label && typeof labelX === "number" && typeof labelY === "number" && (
+        <View
+          pointerEvents="none"
+          style={[styles.labelWrap, { left: labelX, top: labelY }]}
+        >
+          <Text style={styles.labelText}>{label}</Text>
+        </View>
+      )}
+    </>
   );
 });
 
@@ -89,15 +110,22 @@ const getStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
     dot: {
       position: "absolute",
-      width: 15,
-      height: 25,
+      width: 18,
+      height: 28,
       borderRadius: 7.5,
       borderWidth: 1,
       borderColor: theme.text,
     },
-    silenced: {
-      opacity: 0.45,
+    silenced: { opacity: 0.45 },
+    labelWrap: {
+      position: "absolute",
+      transform: [{ translateX: -8 }, { translateY: -8.5 }], // centra ~16px
+      minWidth: 16,
+      minHeight: 16,
+      alignItems: "center",
+      justifyContent: "center",
     },
+    labelText: { fontSize: 14, fontWeight: "800", color: theme.text },
   });
 
 export default Dot;

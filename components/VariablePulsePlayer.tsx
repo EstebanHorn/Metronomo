@@ -1,3 +1,4 @@
+// components/VariablePulsePlayer.tsx
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
@@ -12,6 +13,12 @@ import type { ActiveEvent } from "../types/Metronome";
 import { useTheme } from "../contexts/ThemeContext";
 import { Colors } from "../constants/Colors";
 
+function soundToRole(s: string): Role {
+  if (s === "clave") return "clave" as Role;
+  if (s === "silence") return "silence" as Role;
+  return "normal" as Role; // resto = sub/normal
+}
+
 function generatePulses(
   structuralPattern: readonly number[],
   subdivisions: number[],
@@ -20,16 +27,14 @@ function generatePulses(
   const pulses: Pulse[] = [];
   subdivisions.forEach((numBeats, sectionIdx) => {
     const structuralDuration = structuralPattern[sectionIdx];
-    const durationPerBeat = structuralDuration / numBeats; // en octavos
-
+    const durationPerBeat = structuralDuration / numBeats; // octavos “estructurales”
     for (let k = 0; k < numBeats; k++) {
-      let soundType = (soundMap[sectionIdx]?.[k] ?? "sub") as string;
-      if (soundType === "sub") soundType = "normal";
-
+      const raw = (soundMap[sectionIdx]?.[k] ?? "sub") as string;
+      const role = soundToRole(raw);
       pulses.push({
         durEighths: durationPerBeat,
         subdiv: 1,
-        role: soundType as Role,
+        role,
         pan: 0,
         sectionIdx,
         k,
@@ -39,11 +44,28 @@ function generatePulses(
   return pulses;
 }
 
+// Rota la timeline en UNIDADES (octavos estructurales)
+function rotatePulsesByUnits(pulses: Pulse[], units: number): Pulse[] {
+  if (!units) return pulses;
+  const totalUnits = pulses.reduce((s, p) => s + p.durEighths, 0);
+  const shift = ((units % totalUnits) + totalUnits) % totalUnits;
+
+  let acc = 0;
+  let idx = 0;
+  for (; idx < pulses.length; idx++) {
+    const nextAcc = acc + pulses[idx].durEighths;
+    if (nextAcc > shift) break;
+    acc = nextAcc;
+  }
+  return [...pulses.slice(idx), ...pulses.slice(0, idx)];
+}
+
 type Props = {
   bpm: number;
   structuralPattern: readonly number[];
   subdivisions: number[];
   soundMap: string[][];
+  phaseUnits?: number;
   onReset?: () => void;
   onActive?: (ev: ActiveEvent | null) => void;
 };
@@ -53,6 +75,7 @@ export default function VariablePulsePlayer({
   structuralPattern,
   subdivisions,
   soundMap,
+  phaseUnits = 0,
   onReset,
   onActive,
 }: Props) {
@@ -62,7 +85,7 @@ export default function VariablePulsePlayer({
   const subRef = useRef<{ remove: () => void } | null>(null);
   const isInitialMount = useRef(true);
 
-  const stop = React.useCallback(() => {
+  const stop = useCallback(() => {
     try {
       Metronome.stop();
     } catch {}
@@ -71,22 +94,12 @@ export default function VariablePulsePlayer({
     onActive?.(null);
   }, [onActive]);
 
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-    } else {
-      stop();
-    }
-  }, [bpm, subdivisions, structuralPattern, stop]);
-
+  // (Re)construir patrón y aplicar BPM
   const buildAndSetPattern = useCallback(async () => {
-    const newPattern = generatePulses(
-      structuralPattern,
-      subdivisions,
-      soundMap
-    );
-    await Metronome.setPattern(newPattern);
-  }, [structuralPattern, subdivisions, soundMap]);
+    const raw = generatePulses(structuralPattern, subdivisions, soundMap);
+    const shifted = rotatePulsesByUnits(raw, phaseUnits);
+    await Metronome.setPattern(shifted);
+  }, [structuralPattern, subdivisions, soundMap, phaseUnits]);
 
   const applyConfig = useCallback(async () => {
     await Metronome.init({ sampleRate: 48000, bufferFrames: 1024 });
@@ -98,28 +111,42 @@ export default function VariablePulsePlayer({
     void applyConfig();
   }, [applyConfig]);
 
+  // Si cambian parámetros críticos, paramos (para evitar desfasajes)
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+    } else {
+      stop();
+    }
+  }, [bpm, subdivisions, structuralPattern, phaseUnits, stop]);
+
+  useEffect(() => {
+    // Actualiza BPM y patrón sin reiniciar si corre
     Metronome.setBpm(bpm);
     buildAndSetPattern();
-  }, [bpm, subdivisions, structuralPattern, soundMap, buildAndSetPattern]);
+  }, [
+    bpm,
+    subdivisions,
+    structuralPattern,
+    soundMap,
+    phaseUnits,
+    buildAndSetPattern,
+  ]);
 
   const start = useCallback(async () => {
     await applyConfig();
     if (subRef.current) subRef.current.remove();
 
     const sub = Metronome.onTick((_bar, section, k, tMsFromNative) => {
-      if (soundMap[section]?.[k] !== "silence") {
+      const s = (soundMap[section]?.[k] ?? "sub") as string;
+      if (s !== "silence") {
+        const normalizedType: ActiveEvent["type"] =
+          s === "clave" ? "clave" : "pulse";
         onActive?.({
           tMs: typeof tMsFromNative === "number" ? tMsFromNative : Date.now(),
           section,
           k,
-          type: ((): ActiveEvent["type"] => {
-            const sm = soundMap[section]?.[k];
-            if (sm === "clave") return "clave";
-            if (sm === "accent") return "accent";
-            if (sm === "silence") return "silence";
-            return "pulse"; // "sub" -> "pulse"
-          })(),
+          type: normalizedType,
           tick: section + k,
         });
       }
@@ -190,22 +217,13 @@ const getStyles = (theme: typeof Colors.light) =>
           }
         : { elevation: 5 }),
     },
-    buttonText: {
-      fontSize: 18,
-      fontWeight: "bold",
-      color: theme.text,
-    },
+    buttonText: { fontSize: 18, fontWeight: "bold", color: theme.text },
     stopButton: {
       backgroundColor: theme.metronome.sub,
       borderColor: theme.text,
     },
-    stopButtonText: {
-      color: theme.background,
-    },
-    resetButton: {
-      paddingVertical: 4,
-      paddingHorizontal: 12,
-    },
+    stopButtonText: { color: theme.background },
+    resetButton: { paddingVertical: 4, paddingHorizontal: 12 },
     resetButtonText: {
       fontSize: 14,
       color: theme.metronome.sub,

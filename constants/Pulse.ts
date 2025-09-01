@@ -31,16 +31,22 @@ export const DEFAULTS = {
 export function sectionsFromPattern({
   cycleMs,
   pattern,
+  phaseUnits = 0, // <— nuevo
 }: {
   cycleMs: number;
   pattern: readonly number[] | number[];
+  phaseUnits?: number;
 }) {
   const total = pattern.reduce((a, b) => a + b, 0);
-  if (total === 0) return [] as { startMs: number; durMs: number }[];
+  if (total === 0) return [];
   const unit = cycleMs / total;
+
+  // desplazamos el “cero” del ciclo a la derecha phaseUnits
+  const phaseMs = phaseUnits * unit;
+
   let acc = 0;
   return pattern.map((len) => {
-    const startMs = acc * unit;
+    const startMs = (acc * unit + phaseMs) % cycleMs;
     const durMs = len * unit;
     acc += len;
     return { startMs, durMs };
