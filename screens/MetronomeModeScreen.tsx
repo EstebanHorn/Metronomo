@@ -16,15 +16,9 @@ import type { ActiveEvent } from "../types/Metronome";
 import BpmWheel from "../components/BpmWheel";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import TapTempo from "../components/TapTempo";
+import SubdivisionSelector from "../components/SubdivisionSelector";
 
-type SoundType =
-  | "clave"
-  | "accent"
-  | "pulseA"
-  | "pulseB"
-  | "ghost"
-  | "silence"
-  | "sub";
+type SoundType = "clave" | "accent" | "silence" | "sub";
 
 export default function MetronomeModeScreen({
   presetId,
@@ -34,7 +28,7 @@ export default function MetronomeModeScreen({
   onBack?: () => void;
 }) {
   const theme = useTheme();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const preset = PRESETS[presetId];
 
   const [bpm, setBpm] = useState<number>(110);
@@ -65,8 +59,6 @@ export default function MetronomeModeScreen({
 
   const clampBpm = (x: number) =>
     Math.max(30, Math.min(300, Math.round(x || 0)));
-  const bpmMinus = (d = 5) => setBpm((x) => clampBpm(x - d));
-  const bpmPlus = (d = 5) => setBpm((x) => clampBpm(x + d));
 
   const setSubdivisionForSection = (i: number, v: number) =>
     setSubdivisions((prev) => prev.map((x, j) => (j === i ? v : x)));
@@ -78,10 +70,8 @@ export default function MetronomeModeScreen({
         const next = [...row];
         const curr = next[k] as SoundType;
         if (k === 0) {
-          // cabeza de sección: clave <-> silence
           next[k] = curr === "clave" ? "silence" : "clave";
         } else {
-          // golpes internos: sub -> accent -> silence -> sub
           next[k] =
             curr === "sub" ? "accent" : curr === "accent" ? "silence" : "sub";
         }
@@ -96,26 +86,10 @@ export default function MetronomeModeScreen({
     setActiveEvent(null);
   };
 
-  const circleSize = Math.max(220, Math.min(width - 50, 520));
-  const PATTERN_CHOICES = [2, 3, 4, 5];
-  const styles = getStyles(theme);
+  const shortSide = Math.min(width, height);
+  const circleSize = Math.max(180, Math.min(shortSide * 0.9, 520));
 
-  const selectorText = (name: string) => {
-    switch (name) {
-      case "A":
-        return "I";
-      case "Á":
-        return "II";
-      case "B":
-        return "III";
-      case "C":
-        return "IV";
-      case "B́":
-        return "V";
-      default:
-        return name;
-    }
-  };
+  const styles = getStyles(theme);
 
   return (
     <View style={{ flex: 1, paddingBottom: insets.bottom }}>
@@ -151,7 +125,6 @@ export default function MetronomeModeScreen({
               cycleMs={cycleMs}
               subdivisions={subdivisions}
               structuralPattern={preset.STRUCTURAL_PATTERN}
-              phaseUnits={preset.PHASE_UNITS}
               activeEvent={activeEvent}
               soundMap={soundMap}
               onDotPress={onDotPress}
@@ -168,30 +141,11 @@ export default function MetronomeModeScreen({
             </View>
           </View>
 
-          <View style={styles.selectorGrid}>
-            {SECTION_NAMES.map((name, rowIdx) => (
-              <View style={styles.selectorRow} key={`row-${rowIdx}`}>
-                <Text style={styles.selectorLabel}>{selectorText(name)}</Text>
-                <View style={styles.selectorDotsRow}>
-                  {PATTERN_CHOICES.map((val) => {
-                    const selected = subdivisions[rowIdx] === val;
-                    return (
-                      <TouchableOpacity
-                        key={`s-${rowIdx}-${val}`}
-                        onPress={() => setSubdivisionForSection(rowIdx, val)}
-                        style={[
-                          styles.selectorDot,
-                          selected && styles.selectorDotSelected,
-                        ]}
-                      >
-                        <Text style={styles.selectorDotText}>{val}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            ))}
-          </View>
+          <SubdivisionSelector
+            names={SECTION_NAMES}
+            subdivisions={subdivisions}
+            onChange={setSubdivisionForSection}
+          />
         </View>
       </View>
     </View>
@@ -200,11 +154,15 @@ export default function MetronomeModeScreen({
 
 const getStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
-    scrollContainer: { flexGrow: 1, justifyContent: "center" },
     main: {
+      flex: 1,
+      height: "100%",
+      width: "100%",
       paddingHorizontal: 10,
       backgroundColor: theme.background,
       alignItems: "center",
+      justifyContent: "flex-start",
+      marginBottom: 5,
     },
     headerRow: {
       alignItems: "center",
@@ -234,15 +192,14 @@ const getStyles = (theme: typeof Colors.light) =>
       flexDirection: "row",
       justifyContent: "center",
     },
-    bpmLabel: { fontSize: 16, fontWeight: "600", color: theme.text },
-
-    infoText: { marginTop: 6, fontSize: 16, color: theme.metronome.sub },
 
     beatsContainer: {
       alignItems: "center",
-      gap: 30,
+      justifyContent: "space-around",
+      flex: 1,
+      gap: 12,
       width: "100%",
-      marginTop: 20,
+      marginTop: 5,
     },
     circleWrap: {
       position: "relative",
@@ -250,42 +207,6 @@ const getStyles = (theme: typeof Colors.light) =>
       justifyContent: "center",
     },
     playOverlay: { position: "absolute" },
-
-    selectorGrid: { gap: 10, width: "100%", maxWidth: 320 },
-    selectorRow: {
-      flexDirection: "row",
-      justifyContent: "space-around",
-      alignItems: "center",
-      paddingVertical: 4,
-    },
-    selectorLabel: { fontSize: 18, fontWeight: "500", color: theme.text },
-    selectorDotsRow: { flexDirection: "row", gap: 8 },
-    selectorDot: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      borderWidth: 1,
-      borderColor: theme.metronome.muted,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.background,
-      ...(Platform.OS === "ios"
-        ? {
-            shadowColor: theme.text,
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.2,
-            shadowRadius: 1.41,
-          }
-        : { elevation: 2 }),
-    },
-    selectorDotSelected: {
-      backgroundColor: theme.metronome.clave,
-      borderColor: theme.metronome.activeGlow,
-      ...(Platform.OS === "ios"
-        ? { shadowOpacity: 0.3, shadowRadius: 2.5 }
-        : { elevation: 4 }),
-    },
-    selectorDotText: { fontSize: 14, fontWeight: "600", color: theme.text },
 
     btn: {
       paddingHorizontal: 12,

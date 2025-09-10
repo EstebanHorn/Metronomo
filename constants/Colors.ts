@@ -1,10 +1,21 @@
 // constants/Colors.ts
 
-// Defino los colores base con nombres para reutilizarlos
-const brandYellow = "#f7c100"; // Tu Mikado Yellow para la clave
-const brandCyan = "#25a4c4"; // Tu Pacific Cyan para el acento
-const brandOrange = "#f3ad6c"; // El color del "resplandor" activo
+// 🎨 Colores principales
+const brandYellow = "#f7c100"; // Click (clave principal)
+const brandCyan = "#25a4c4"; // Cencerro
+const brandOrange = "#f3ad6c"; // Glow activo/transiciones
 
+// 🎨 Paleta para los sonidos
+const pulseColors = {
+  cajonGrave: "#ff4d6d", // Rojo vibrante
+  cajonRelleno: "#3b82f6", // Azul intenso
+  cajonAgudo: "#f97316", // Naranja
+  cencerro: brandCyan, // Cyan
+  click: brandYellow, // Amarillo
+  silencio: "#d1d1d6", // Gris claro
+};
+
+// 🎨 Colores base globales
 const base = {
   black: "#0a0908",
   whiteSmoke: "#f2f4f3",
@@ -12,46 +23,45 @@ const base = {
   lightGray: "#D1D1D6",
 };
 
+// 🎨 Paleta modo oscuro
 const dark = {
-  almostBlack: "#121212", // Un negro un poco más suave que el puro
+  almostBlack: "#121212",
   offWhite: "#EAEAEA",
   mediumGray: "#48484A",
   darkGray: "#2C2C2E",
 };
 
+// 🎨 Colores de los modos de metrónomo
+const metronomeBase = {
+  binary: "#7c3aed", // Violeta elegante
+  ternary: "#10b981", // Verde esmeralda
+};
+
 export const Colors = {
   light: {
-    // Colores estándar de la app
     text: base.black,
     background: base.whiteSmoke,
-    tint: brandYellow, // El color principal interactivo
+    tint: brandYellow,
     tabIconDefault: "#8e8e93",
     tabIconSelected: brandYellow,
 
-    // Colores específicos para el metrónomo
     metronome: {
-      clave: brandYellow,
-      accent: brandCyan,
-      sub: base.davysGray, // El gris oscuro para el pulso normal
-      muted: base.lightGray, // Un gris claro para el estado silenciado
+      ...pulseColors,
       activeGlow: brandOrange,
+      base: metronomeBase,
     },
   },
   dark: {
-    // Colores estándar de la app
     text: dark.offWhite,
     background: dark.almostBlack,
     tint: brandYellow,
     tabIconDefault: "#8e8e93",
     tabIconSelected: brandYellow,
 
-    // Colores específicos para el metrónomo en modo oscuro
     metronome: {
-      clave: brandYellow, // El amarillo resalta perfecto
-      accent: brandCyan, // El cyan también
-      sub: dark.mediumGray, // Un gris intermedio que se ve bien sobre fondo oscuro
-      muted: dark.darkGray, // Un gris bien oscuro para el estado silenciado
+      ...pulseColors,
       activeGlow: brandOrange,
+      base: metronomeBase,
     },
   },
 };

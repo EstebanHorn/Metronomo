@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   wrap: { width: 92, position: "relative" },
   item: { alignItems: "center", justifyContent: "center" },
   itemText: {
-    fontSize: 25,
+    fontSize: 20,
     fontWeight: "800",
     letterSpacing: 1.5,
   },

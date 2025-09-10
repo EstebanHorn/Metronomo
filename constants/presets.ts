@@ -1,12 +1,6 @@
 // constants/presets.ts
 export type Meter = "binary16" | "ternary12";
-export type PresetId =
-  | "son_32"
-  | "son_23"
-  | "rumba_32"
-  | "rumba_23"
-  | "afro"
-  | "hemiola";
+export type PresetId = "son_32" | "rumba_32" | "afro" | "hemiola";
 
 export const SECTION_NAMES = ["A", "Á", "B", "C", "B́"] as const;
 
@@ -53,44 +47,23 @@ export const PRESETS: Record<
     STRUCTURAL_PATTERN: readonly number[];
     INITIAL_SUBDIVISIONS: readonly number[]; // por defecto = estructural
     DEFAULT_SOUND_MAP: SoundType[][];
-    PHASE_UNITS: number; // cuánto adelantamos el inicio del ciclo
   }
 > = {
   son_32: {
-    label: "Son 3/2",
+    label: "Son",
     subtitle: "Binario · 16",
     meter: "binary16",
     STRUCTURAL_PATTERN: SON_32,
     INITIAL_SUBDIVISIONS: SON_32,
     DEFAULT_SOUND_MAP: makeDefaultSoundMap(SON_32), // solo cabezas
-    PHASE_UNITS: 0,
-  },
-  son_23: {
-    label: "Son 2/3",
-    subtitle: "Binario · 16 (inicio opuesto)",
-    meter: "binary16",
-    STRUCTURAL_PATTERN: SON_32,
-    INITIAL_SUBDIVISIONS: SON_32,
-    DEFAULT_SOUND_MAP: makeDefaultSoundMap(SON_32), // solo cabezas
-    PHASE_UNITS: 8, // arranque opuesto (16/2)
   },
   rumba_32: {
-    label: "Rumba 3/2",
+    label: "Rumba",
     subtitle: "Binario · 16",
     meter: "binary16",
     STRUCTURAL_PATTERN: RUMBA_32,
     INITIAL_SUBDIVISIONS: RUMBA_32,
     DEFAULT_SOUND_MAP: makeDefaultSoundMap(RUMBA_32),
-    PHASE_UNITS: 0,
-  },
-  rumba_23: {
-    label: "Rumba 2/3",
-    subtitle: "Binario · 16 (inicio opuesto)",
-    meter: "binary16",
-    STRUCTURAL_PATTERN: RUMBA_32,
-    INITIAL_SUBDIVISIONS: RUMBA_32,
-    DEFAULT_SOUND_MAP: makeDefaultSoundMap(RUMBA_32),
-    PHASE_UNITS: 8,
   },
   afro: {
     label: "Afro",
@@ -99,7 +72,6 @@ export const PRESETS: Record<
     STRUCTURAL_PATTERN: AFRO,
     INITIAL_SUBDIVISIONS: AFRO,
     DEFAULT_SOUND_MAP: makeDefaultSoundMap(AFRO),
-    PHASE_UNITS: 0,
   },
   hemiola: {
     label: "Hemiola",
@@ -108,15 +80,12 @@ export const PRESETS: Record<
     STRUCTURAL_PATTERN: HEMIOLA,
     INITIAL_SUBDIVISIONS: HEMIOLA,
     DEFAULT_SOUND_MAP: makeDefaultSoundMap(HEMIOLA),
-    PHASE_UNITS: 0,
   },
 };
 
 export const PRESET_ORDER: PresetId[] = [
   "son_32",
-  "son_23",
   "rumba_32",
-  "rumba_23",
   "afro",
   "hemiola",
 ];

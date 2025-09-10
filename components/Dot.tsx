@@ -66,8 +66,8 @@ const Dot = React.memo(function Dot({
     () => [
       styles.dot,
       {
-        left: x - 9.5,
-        top: y - 14.5,
+        left: x - 8,
+        top: y - 13,
         transform: [{ rotate: `${deg}deg` }],
         backgroundColor: bgColor,
       },
@@ -110,8 +110,8 @@ const getStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
     dot: {
       position: "absolute",
-      width: 18,
-      height: 28,
+      width: 15,
+      height: 25,
       borderRadius: 7.5,
       borderWidth: 1,
       borderColor: theme.text,
@@ -119,7 +119,7 @@ const getStyles = (theme: typeof Colors.light) =>
     silenced: { opacity: 0.45 },
     labelWrap: {
       position: "absolute",
-      transform: [{ translateX: -8 }, { translateY: -8.5 }], // centra ~16px
+      transform: [{ translateX: -8 }, { translateY: -8 }], // centra ~16px
       minWidth: 16,
       minHeight: 16,
       alignItems: "center",

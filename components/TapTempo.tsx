@@ -83,8 +83,8 @@ const getStyles = (theme: any) =>
       gap: 4,
     },
     tapButton: {
-      paddingHorizontal: 26,
-      paddingVertical: 16,
+      paddingHorizontal: 18,
+      paddingVertical: 12,
       borderRadius: 999,
       backgroundColor: theme.tint,
       borderWidth: 2,
@@ -99,7 +99,7 @@ const getStyles = (theme: any) =>
         : { elevation: 5 }),
     },
     tapText: {
-      fontSize: 18,
+      fontSize: 12,
       fontWeight: "bold",
       color: theme.text,
     },
