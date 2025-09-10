@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Platform,
   StyleSheet,
@@ -9,11 +9,14 @@ import {
 import { useTheme } from "../contexts/ThemeContext";
 import { Colors } from "../constants/Colors";
 
+type MeterType = "binary16" | "ternary12";
+
 type Props = {
   names: ReadonlyArray<string>;
   subdivisions: ReadonlyArray<number>;
   onChange: (sectionIndex: number, value: number) => void;
   choices?: ReadonlyArray<number>;
+  mtype: MeterType; // <-- tipado estricto
 };
 
 export default function SubdivisionSelector({
@@ -21,9 +24,11 @@ export default function SubdivisionSelector({
   subdivisions,
   onChange,
   choices = [2, 3, 4, 5, 6],
+  mtype,
 }: Props) {
   const theme = useTheme();
-  const styles = getStyles(theme);
+
+  const styles = useMemo(() => getStyles(theme, mtype), [theme, mtype]);
 
   const selectorText = (name: string) => {
     switch (name) {
@@ -58,8 +63,19 @@ export default function SubdivisionSelector({
                     styles.selectorDot,
                     selected && styles.selectorDotSelected,
                   ]}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Sección ${selectorText(name)}: ${val}`}
+                  accessibilityState={{ selected }}
                 >
-                  <Text style={styles.selectorDotText}>{val}</Text>
+                  <Text
+                    style={[
+                      styles.selectorDotText,
+                      selected && styles.selectorDotTextSelected,
+                    ]}
+                  >
+                    {val}
+                  </Text>
                 </TouchableOpacity>
               );
             })}
@@ -69,47 +85,64 @@ export default function SubdivisionSelector({
     </View>
   );
 }
+const getStyles = (theme: typeof Colors.light, mtype: MeterType) => {
+  const dotBg =
+    mtype === "binary16" ? "rgba(124,58,237,0.12)" : "rgba(16,185,129,0.12)";
 
-const getStyles = (theme: typeof Colors.light) =>
-  StyleSheet.create({
+  return StyleSheet.create({
     selectorGrid: {
-      gap: 4,
+      gap: 6,
       width: "100%",
-      maxWidth: 320,
+      maxWidth: 340,
       justifyContent: "center",
     },
     selectorRow: {
       flexDirection: "row",
-      justifyContent: "space-around",
+      justifyContent: "space-between",
       alignItems: "center",
-      paddingVertical: 4,
+      paddingVertical: 6,
     },
-    selectorLabel: { fontSize: 18, fontWeight: "500", color: theme.text },
-    selectorDotsRow: { flexDirection: "row", gap: 8 },
+    selectorLabel: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: theme.ui.text,
+      width: 42,
+      textAlign: "center",
+    },
+    selectorDotsRow: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
+
     selectorDot: {
-      width: 32,
-      height: 32,
+      width: 36,
+      height: 36,
       borderRadius: 18,
-      borderWidth: 1,
-      borderColor: theme.metronome.muted,
+      borderWidth: 1.5,
+      borderColor: theme.ui.divider,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.background,
+      backgroundColor: theme.ui.accent + "2f",
       ...(Platform.OS === "ios"
         ? {
-            shadowColor: theme.text,
+            shadowColor: theme.ui.text,
             shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.2,
-            shadowRadius: 1.41,
+            shadowOpacity: 0.18,
+            shadowRadius: 1.6,
           }
-        : { elevation: 2 }),
+        : { boxShadow: "1px 4px 4px 0px rgba(15, 15, 15, 0.35)" }),
     },
     selectorDotSelected: {
-      backgroundColor: theme.metronome.clave,
-      borderColor: theme.metronome.activeGlow,
+      backgroundColor: theme.ui.accent,
+      borderColor: theme.ui.accent,
       ...(Platform.OS === "ios"
         ? { shadowOpacity: 0.3, shadowRadius: 2.5 }
         : { elevation: 4 }),
     },
-    selectorDotText: { fontSize: 14, fontWeight: "600", color: theme.text },
+    selectorDotText: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: theme.ui.text,
+    },
+    selectorDotTextSelected: {
+      color: theme.ui.background,
+    },
   });
+};

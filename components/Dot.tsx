@@ -1,4 +1,3 @@
-// Dot.tsx
 import React, { useMemo } from "react";
 import {
   TouchableOpacity,
@@ -14,14 +13,19 @@ type DotProps = {
   x: number;
   y: number;
   deg: number;
-  bgColor: string;
+  bgColor: string; // color ya resuelto según role
   isActive: boolean;
   isSilenced: boolean;
   onPress: () => void;
-  label?: string;
+  label?: string; // romano opcional
   labelX?: number;
   labelY?: number;
 };
+
+const DOT_W = 16;
+const DOT_H = 26;
+const HALF_W = DOT_W / 2;
+const HALF_H = DOT_H / 2;
 
 const Dot = React.memo(function Dot({
   x,
@@ -36,54 +40,53 @@ const Dot = React.memo(function Dot({
   labelY,
 }: DotProps) {
   const theme = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
 
-  const SHADOW_ACTIVE = Platform.select({
+  const ACTIVE_SHADOW = Platform.select({
     ios: {
       shadowColor: theme.metronome.activeGlow,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.8,
-      shadowRadius: 12,
+      shadowRadius: 10,
     },
-    android: {
-      boxShadow: `0px 4px 8px 2px ${theme.metronome.activeGlow}`,
-      backgroundColor: theme.metronome.activeGlow,
-    },
+    android: { elevation: 6 },
   });
 
-  const SHADOW_DEFAULT = Platform.select({
+  const DEFAULT_SHADOW = Platform.select({
     ios: {
-      shadowColor: theme.text,
+      shadowColor: theme.ui.text,
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: 2,
+      shadowOpacity: 0.25,
+      shadowRadius: 2.5,
     },
-    android: { elevation: 4 },
+    android: { elevation: 3 },
   });
-
-  const styles = useMemo(() => getStyles(theme), [theme]);
 
   const dynamicStyle = useMemo(
     () => [
       styles.dot,
       {
-        left: x - 8,
-        top: y - 13,
+        left: x - HALF_W,
+        top: y - HALF_H,
         transform: [{ rotate: `${deg}deg` }],
         backgroundColor: bgColor,
+        borderColor: isActive ? theme.metronome.activeGlow : theme.ui.text,
       },
-      isActive && !isSilenced ? SHADOW_ACTIVE : SHADOW_DEFAULT,
+      isActive && !isSilenced ? ACTIVE_SHADOW : DEFAULT_SHADOW,
       isSilenced ? styles.silenced : null,
     ],
     [
+      styles,
       x,
       y,
       deg,
       bgColor,
       isActive,
       isSilenced,
-      styles,
-      SHADOW_ACTIVE,
-      SHADOW_DEFAULT,
+      ACTIVE_SHADOW,
+      DEFAULT_SHADOW,
+      theme.metronome.activeGlow,
+      theme.ui.text,
     ]
   );
 
@@ -93,6 +96,9 @@ const Dot = React.memo(function Dot({
         activeOpacity={0.7}
         onPress={onPress}
         style={dynamicStyle}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        accessibilityRole="button"
+        accessibilityLabel={label ? `Sección ${label}` : "Pulso"}
       />
       {label && typeof labelX === "number" && typeof labelY === "number" && (
         <View
@@ -110,22 +116,28 @@ const getStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
     dot: {
       position: "absolute",
-      width: 15,
-      height: 25,
+      width: DOT_W,
+      height: DOT_H,
       borderRadius: 7.5,
-      borderWidth: 1,
-      borderColor: theme.text,
+      borderWidth: 2,
     },
     silenced: { opacity: 0.45 },
     labelWrap: {
       position: "absolute",
-      transform: [{ translateX: -8 }, { translateY: -8 }], // centra ~16px
+      transform: [{ translateX: -8 }, { translateY: -8 }],
       minWidth: 16,
       minHeight: 16,
       alignItems: "center",
       justifyContent: "center",
     },
-    labelText: { fontSize: 14, fontWeight: "800", color: theme.text },
+    labelText: {
+      fontSize: 12,
+      fontWeight: "800",
+      color: theme.ui.text,
+      includeFontPadding: false,
+      textAlignVertical: "center",
+      textAlign: "center",
+    },
   });
 
 export default Dot;

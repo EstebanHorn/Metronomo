@@ -28,14 +28,16 @@ export default function App() {
 
   return (
     <ThemeContext.Provider value={theme}>
-      <SafeAreaProvider style={{ flex: 1, backgroundColor: theme.background }}>
+      <SafeAreaProvider
+        style={{ flex: 1, backgroundColor: theme.ui.background }}
+      >
         <StatusBar
           barStyle={barStyle}
           backgroundColor={
-            Platform.OS === "android" ? theme.background : undefined
+            Platform.OS === "android" ? theme.ui.background : undefined
           }
         />
-        <View style={{ flex: 1, backgroundColor: theme.background }}>
+        <View style={{ flex: 1, backgroundColor: theme.ui.background }}>
           <AppNavigator />
         </View>
       </SafeAreaProvider>

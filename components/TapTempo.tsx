@@ -8,6 +8,7 @@ import {
   Platform,
 } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
+import { Colors } from "../constants/Colors";
 
 type Props = {
   onBpmChange: (bpm: number) => void;
@@ -75,7 +76,7 @@ export default function TapTempo({
   );
 }
 
-const getStyles = (theme: any) =>
+const getStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
     container: {
       alignItems: "center",
@@ -86,31 +87,31 @@ const getStyles = (theme: any) =>
       paddingHorizontal: 18,
       paddingVertical: 12,
       borderRadius: 999,
-      backgroundColor: theme.tint,
+      backgroundColor: theme.ui.accent,
       borderWidth: 2,
-      borderColor: theme.metronome.activeGlow,
+      borderColor: theme.ui.accent,
       ...(Platform.OS === "ios"
         ? {
-            shadowColor: theme.text,
+            shadowColor: theme.ui.text,
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.25,
             shadowRadius: 3.84,
           }
-        : { elevation: 5 }),
+        : { boxShadow: "1px 4px 4px 0px rgba(0, 0, 0, 0.38)" }),
     },
     tapText: {
       fontSize: 12,
       fontWeight: "bold",
-      color: theme.text,
+      color: theme.ui.background,
     },
     subtext: {
       marginTop: 6,
       fontSize: 16,
       fontWeight: "600",
-      color: theme.text,
+      color: theme.ui.text,
     },
     hint: {
       fontSize: 12,
-      color: theme.metronome.sub,
+      color: theme.ui.tabIconDefault,
     },
   });

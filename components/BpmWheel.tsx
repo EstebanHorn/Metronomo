@@ -8,14 +8,14 @@ import React, {
 import {
   View,
   Text,
-  FlatList,
   StyleSheet,
   Platform,
   NativeSyntheticEvent,
   NativeScrollEvent,
-  ListRenderItemInfo,
+  ScrollView,
 } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
+import { Colors } from "../constants/Colors";
 
 type Props = {
   value: number;
@@ -33,37 +33,42 @@ export default function BpmWheel({
   itemHeight = 36,
 }: Props) {
   const theme = useTheme();
-  const listRef = useRef<FlatList<number>>(null);
+  const scrollRef = useRef<ScrollView>(null);
   const userIsScrolling = useRef(false);
 
+  const styles = useMemo(() => getStyles(theme), [theme]);
+
   const visibleRows = 3;
-  const centerRow = Math.floor(visibleRows / 2);
+  const centerRow = 1; // resaltamos la fila del medio
   const containerHeight = itemHeight * visibleRows;
 
-  const data = useMemo(() => {
-    const arr = Array.from({ length: max - min + 1 }, (_, i) => i + min);
-    const pad = new Array(centerRow).fill(NaN);
-    return [...pad, ...arr, ...pad];
-  }, [min, max, centerRow]);
+  // Datos "reales"
+  const data = useMemo(
+    () => Array.from({ length: max - min + 1 }, (_, i) => i + min),
+    [min, max]
+  );
 
-  const initialIndex = value - min;
+  // Fantasmas arriba/abajo para poder centrar el medio
+  const paddedData = useMemo(
+    () => [null, ...data, null], // centerRow = 1 -> una celda fantasma arriba y abajo
+    [data]
+  );
 
+  // Al iniciar/actualizar, scrolleo al índice real (sin restar centerRow)
   useEffect(() => {
     userIsScrolling.current = false;
-    const targetIndex = value - min;
-    listRef.current?.scrollToOffset({
-      offset: targetIndex * itemHeight,
-      animated: true,
-    });
-  }, [value, min, itemHeight, centerRow]);
+    const targetIndex = value - min; // 0..N-1 dentro de "data"
+    const y = targetIndex * itemHeight; // como hay 1 fantasma arriba, el centro queda correcto
+    // Usá animated:false para evitar redondeos iniciales raros
+    scrollRef.current?.scrollTo({ y, animated: false });
+  }, [value, min, itemHeight]);
 
   const onMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (!userIsScrolling.current) {
-      return;
-    }
+    if (!userIsScrolling.current) return;
     userIsScrolling.current = false;
 
     const y = e.nativeEvent.contentOffset.y;
+    // y/itemHeight me da el índice "real" en data (0..N-1)
     const rawIndex = Math.round(y / itemHeight);
     const next = Math.max(min, Math.min(max, min + rawIndex));
     if (Number.isFinite(next)) onChange(next);
@@ -78,9 +83,11 @@ export default function BpmWheel({
     setOffsetY(e.nativeEvent.contentOffset.y);
   }, []);
 
-  const getItemStyle = (index: number) => {
+  // Resaltado: el índice destacado en paddedData es (offsetY/itemHeight + centerRow)
+  const getItemStyle = (paddedIndex: number) => {
     const currentIndexFloat = offsetY / itemHeight;
-    const dist = Math.abs(index - currentIndexFloat - centerRow);
+    const highlightIndex = currentIndexFloat + centerRow; // en paddedData
+    const dist = Math.abs(paddedIndex - highlightIndex);
 
     let opacity = 0.25;
     if (dist < 0.5) opacity = 1;
@@ -91,21 +98,6 @@ export default function BpmWheel({
     return { opacity, transform: [{ scale }] };
   };
 
-  const renderItem = ({ item, index }: ListRenderItemInfo<number>) => {
-    const isGhost = Number.isNaN(item);
-    const dynamicStyle = getItemStyle(index);
-
-    return (
-      <View style={[styles.item, { height: itemHeight }]}>
-        {!isGhost && (
-          <Text style={[styles.itemText, { color: theme.text }, dynamicStyle]}>
-            {item}
-          </Text>
-        )}
-      </View>
-    );
-  };
-
   return (
     <View style={[styles.wrap, { height: containerHeight }]}>
       <View
@@ -113,17 +105,13 @@ export default function BpmWheel({
         style={[
           styles.centerLine,
           {
-            top: (containerHeight - itemHeight) / 2,
+            top: (containerHeight - itemHeight) / 2, // línea en el medio
             height: itemHeight,
-            borderColor: theme.metronome.muted,
           },
         ]}
       />
-      <FlatList
-        ref={listRef}
-        data={data}
-        keyExtractor={(_, i) => String(i)}
-        renderItem={renderItem}
+      <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         snapToInterval={itemHeight}
         decelerationRate={Platform.OS === "ios" ? 0.98 : "fast"}
@@ -131,30 +119,51 @@ export default function BpmWheel({
         onMomentumScrollEnd={onMomentumEnd}
         onScroll={onScroll}
         scrollEventThrottle={16}
-        getItemLayout={(_, index) => ({
-          length: itemHeight,
-          offset: itemHeight * index,
-          index,
-        })}
-        initialScrollIndex={initialIndex}
-      />
+        overScrollMode="never"
+        nestedScrollEnabled
+        // Sin padding: usamos filas fantasma reales
+        contentContainerStyle={undefined}
+      >
+        {paddedData.map((item, i) => (
+          <View
+            key={i}
+            style={{
+              height: itemHeight,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {item != null ? (
+              <Text style={[styles.itemText, getItemStyle(i)]}>{item}</Text>
+            ) : (
+              <View />
+            )}
+          </View>
+        ))}
+      </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: { width: 92, position: "relative" },
-  item: { alignItems: "center", justifyContent: "center" },
-  itemText: {
-    fontSize: 20,
-    fontWeight: "800",
-    letterSpacing: 1.5,
-  },
-  centerLine: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-  },
-});
+const getStyles = (theme: typeof Colors.light) =>
+  StyleSheet.create({
+    wrap: {
+      width: 92,
+      position: "relative",
+      borderRadius: 12,
+    },
+    itemText: {
+      fontSize: 20,
+      fontWeight: "800",
+      letterSpacing: 1.5,
+      color: theme.ui.text,
+    },
+    centerLine: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      borderTopWidth: 1,
+      borderBottomWidth: 1,
+      borderColor: theme.ui.divider,
+    },
+  });

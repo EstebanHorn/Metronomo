@@ -1,3 +1,5 @@
+// constants/pulse.ts
+
 export const SECTION_NAMES = ["A", "Á", "B", "C", "B́"] as const;
 
 export type Mode = "binary" | "ternary";
@@ -31,7 +33,7 @@ export const DEFAULTS = {
 export function sectionsFromPattern({
   cycleMs,
   pattern,
-  phaseUnits = 0, // <— nuevo
+  phaseUnits = 0,
 }: {
   cycleMs: number;
   pattern: readonly number[] | number[];

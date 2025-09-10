@@ -2,37 +2,104 @@ import {
   NativeModules,
   NativeEventEmitter,
   EmitterSubscription,
+  NativeModule,
 } from "react-native";
 
-const { Metronome } = NativeModules as any;
+interface NativeMetronome extends NativeModule {
+  init: (p?: { sampleRate?: number; bufferFrames?: number }) => void;
+  setBpm: (bpm: number) => void;
+  setPattern: (p: ReadonlyArray<any>) => void;
+  setVolume?: (v: number) => void;
+  play: () => void;
+  stop: () => void;
+  addListener: (eventName: string) => void;
+  removeListeners: (count: number) => void;
+}
 
-// Usamos DeviceEventEmitter por debajo; los stubs nativos evitan los warnings.
-const emitter = new NativeEventEmitter();
+const { Metronome } = NativeModules as { Metronome: NativeMetronome };
+const emitter = new NativeEventEmitter(Metronome);
 
-export type Role = "normal" | "accent" | "clave" | "silence";
+/**
+ * Roles soportados:
+ * - Nuevos (preferidos): cajon_grave | cajon_relleno | cajon_agudo | cencerro | click | silence
+ * - Viejos (compat): normal | accent | clave
+ */
+export type Role =
+  | "cajon_grave"
+  | "cajon_relleno"
+  | "cajon_agudo"
+  | "cencerro"
+  | "click"
+  | "silence"
+  | "normal"
+  | "accent"
+  | "clave";
+
 export type Pulse = {
   durEighths: number;
-  subdiv: 2 | 3 | 4 | 5 | 6;
+  subdiv: number; // compat UI
   role: Role;
   pan: number; // -1..1
+  sectionIdx?: number;
+  k?: number;
 };
+
 export type InitParams = { sampleRate?: number; bufferFrames?: number };
+
+type NewRole =
+  | "cajon_grave"
+  | "cajon_relleno"
+  | "cajon_agudo"
+  | "cencerro"
+  | "click"
+  | "silence";
+
+/** Compat → nuevos samples */
+function normalizeRoleForNative(role: Role): NewRole {
+  switch (role) {
+    case "cajon_grave":
+    case "cajon_relleno":
+    case "cajon_agudo":
+    case "cencerro":
+    case "click":
+    case "silence":
+      return role;
+    case "normal":
+      return "cajon_relleno";
+    case "accent":
+      return "cajon_agudo";
+    case "clave":
+      return "click";
+    default:
+      return "cajon_relleno";
+  }
+}
 
 export const init = (p: InitParams = {}) => Metronome.init(p);
 export const setBpm = (bpm: number) => Metronome.setBpm(bpm);
-export const setPattern = (pulses: Pulse[]) => Metronome.setPattern(pulses);
-export const setVolume = (vol: number) => Metronome.setVolume(vol);
+
+/** Adaptamos roles antes de enviar al nativo */
+export const setPattern = (pulses: ReadonlyArray<Pulse>) => {
+  const adapted = pulses.map((p) => ({
+    ...p,
+    role: normalizeRoleForNative(p.role),
+  }));
+  return Metronome.setPattern(adapted);
+};
+
+export const setVolume = (vol: number) => Metronome.setVolume?.(vol);
 export const play = () => Metronome.play();
 export const stop = () => Metronome.stop();
 
+/** onTick expone (bar, section, k, tMs); fallback a (pulse, sub) */
 export const onTick = (
-  cb: (bar: number, pulse: number, sub: number, tMs?: number) => void
+  cb: (bar: number, section: number, k: number, tMs?: number) => void
 ): EmitterSubscription =>
-  emitter.addListener("PulsoTick", (e: any) =>
-    cb(e.bar, e.pulse, e.sub, e.tMs)
-  );
+  emitter.addListener("PulsoTick", (e: any) => {
+    cb(e.bar ?? 0, e.section ?? e.pulse ?? 0, e.k ?? e.sub ?? 0, e.tMs);
+  });
 
 export const onTransport = (
   cb: (playing: boolean) => void
 ): EmitterSubscription =>
-  emitter.addListener("PulsoTransport", (e: any) => cb(e.playing));
+  emitter.addListener("PulsoTransport", (e: any) => cb(!!e.playing));

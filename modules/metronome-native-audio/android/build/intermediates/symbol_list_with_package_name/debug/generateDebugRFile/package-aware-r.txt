@@ -1,4 +1,7 @@
 com.metronomenativeaudio
-raw acento_fuerte
-raw pulso_regular
-raw subdivision
+raw cajon_agudo
+raw cajon_grave
+raw cajon_relleno
+raw cencerro
+raw click
+raw silence

@@ -1,31 +1,25 @@
 // constants/Colors.ts
 
-// 🎨 Colores principales
-const brandYellow = "#f7c100"; // Click (clave principal)
-const brandCyan = "#25a4c4"; // Cencerro
-const brandOrange = "#f3ad6c"; // Glow activo/transiciones
-
-// 🎨 Paleta para los sonidos
+// 🎨 Paleta para los sonidos (roles nuevos)
 const pulseColors = {
-  cajonGrave: "#ff4d6d", // Rojo vibrante
-  cajonRelleno: "#3b82f6", // Azul intenso
-  cajonAgudo: "#f97316", // Naranja
-  cencerro: brandCyan, // Cyan
-  click: brandYellow, // Amarillo
-  silencio: "#d1d1d6", // Gris claro
+  cajon_grave: "#566c86ff", // Grave → azul grisáceo, más definido
+  cajon_relleno: "#a698c9", // Subdivisiones (default), menos lavanda
+  cajon_agudo: "#418372ff", // Agudo → verde petróleo, más brillante
+  cencerro: "#cc7a29", // Bronce / cobre, más vivo
+  click: "#624c69ff", // Clave (default), violeta-gris oscuro con contraste
+  silence: "#c8c8cc", // Silencio → gris claro más neutro
 };
 
-// 🎨 Colores base globales
+// 🎨 Colores base globales (UI)
 const base = {
-  black: "#0a0908",
-  whiteSmoke: "#f2f4f3",
+  black: "#1c1c1c",
+  whiteSmoke: "#ececec",
   davysGray: "#565654",
-  lightGray: "#D1D1D6",
+  lightGray: "#d1d1d6",
 };
 
-// 🎨 Paleta modo oscuro
 const dark = {
-  almostBlack: "#121212",
+  almostBlack: "#1a1c1f",
   offWhite: "#EAEAEA",
   mediumGray: "#48484A",
   darkGray: "#2C2C2E",
@@ -33,34 +27,40 @@ const dark = {
 
 // 🎨 Colores de los modos de metrónomo
 const metronomeBase = {
-  binary: "#7c3aed", // Violeta elegante
-  ternary: "#10b981", // Verde esmeralda
+  binary: "#cc7a29", // Violeta elegante
+  ternary: "#418372", // Verde esmeralda
 };
 
 export const Colors = {
   light: {
-    text: base.black,
-    background: base.whiteSmoke,
-    tint: brandYellow,
-    tabIconDefault: "#8e8e93",
-    tabIconSelected: brandYellow,
-
+    ui: {
+      text: base.black,
+      background: base.whiteSmoke,
+      surface: "#f5f5f7",
+      divider: base.lightGray,
+      tabIconDefault: "#8e8e93",
+      tabIconSelected: "#453853",
+      accent: "#cc7a29", // cobre/naranja para botones y controles
+    },
     metronome: {
       ...pulseColors,
-      activeGlow: brandOrange,
+      activeGlow: "#cc7a29", // resplandor naranja suave
       base: metronomeBase,
     },
   },
   dark: {
-    text: dark.offWhite,
-    background: dark.almostBlack,
-    tint: brandYellow,
-    tabIconDefault: "#8e8e93",
-    tabIconSelected: brandYellow,
-
+    ui: {
+      text: dark.offWhite,
+      background: dark.almostBlack,
+      surface: dark.darkGray,
+      divider: dark.mediumGray,
+      tabIconDefault: "#8e8e93",
+      tabIconSelected: "#e2dec4ff",
+      accent: "#cc7a29", // mismo cobre/naranja
+    },
     metronome: {
       ...pulseColors,
-      activeGlow: brandOrange,
+      activeGlow: "#cc7a29",
       base: metronomeBase,
     },
   },

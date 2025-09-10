@@ -6,19 +6,36 @@ import {
   View,
   useWindowDimensions,
   Platform,
+  FlatList,
 } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
 import VariablePulsePlayer from "../components/VariablePulsePlayer";
 import CircleSubdivisions from "../components/CircleSubdivisions";
 import { Colors } from "../constants/Colors";
-import { PRESETS, type PresetId, SECTION_NAMES } from "../constants/presets";
-import type { ActiveEvent } from "../types/Metronome";
+import { PRESETS, type PresetId } from "../constants/presets";
+import { SECTION_NAMES } from "../constants/Pulse";
+import type { ActiveEvent, SoundRole } from "../types/Metronome";
 import BpmWheel from "../components/BpmWheel";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import TapTempo from "../components/TapTempo";
 import SubdivisionSelector from "../components/SubdivisionSelector";
 
-type SoundType = "clave" | "accent" | "silence" | "sub";
+// Ciclos de sonidos (usa SoundRole para no duplicar tipos)
+const HEAD_CYCLE: SoundRole[] = [
+  "click",
+  "cajon_grave",
+  "cajon_agudo",
+  "cencerro",
+  "silence",
+];
+const BODY_CYCLE: SoundRole[] = [
+  "cajon_relleno",
+  "cajon_agudo",
+  "cajon_grave",
+  "cencerro",
+  "click",
+  "silence",
+];
 
 export default function MetronomeModeScreen({
   presetId,
@@ -36,15 +53,20 @@ export default function MetronomeModeScreen({
     ...preset.INITIAL_SUBDIVISIONS,
   ]);
   const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null);
-  const [soundMap, setSoundMap] = useState<SoundType[][]>(() =>
-    preset.DEFAULT_SOUND_MAP.map((r) => [...r])
+  const [soundMap, setSoundMap] = useState<SoundRole[][]>(() =>
+    preset.DEFAULT_SOUND_MAP.map((r) => [...(r as SoundRole[])])
   );
+
+  const nextFrom = (curr: SoundRole, cycle: SoundRole[]) => {
+    const i = cycle.indexOf(curr);
+    return cycle[(i + 1) % cycle.length];
+  };
 
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
     setSubdivisions([...preset.INITIAL_SUBDIVISIONS]);
-    setSoundMap(preset.DEFAULT_SOUND_MAP.map((r) => [...r]));
+    setSoundMap(preset.DEFAULT_SOUND_MAP.map((r) => [...(r as SoundRole[])]));
     setActiveEvent(null);
   }, [presetId]);
 
@@ -66,15 +88,11 @@ export default function MetronomeModeScreen({
   const onDotPress = (sectionIdx: number, k: number) => {
     setSoundMap((prev) =>
       prev.map((row, i) => {
-        if (i !== sectionIdx) return row;
-        const next = [...row];
-        const curr = next[k] as SoundType;
-        if (k === 0) {
-          next[k] = curr === "clave" ? "silence" : "clave";
-        } else {
-          next[k] =
-            curr === "sub" ? "accent" : curr === "accent" ? "silence" : "sub";
-        }
+        if (i !== sectionIdx) return row as SoundRole[];
+        const next = [...(row as SoundRole[])];
+        const curr = next[k] ?? (k === 0 ? "click" : "cajon_relleno");
+        next[k] =
+          k === 0 ? nextFrom(curr, HEAD_CYCLE) : nextFrom(curr, BODY_CYCLE);
         return next;
       })
     );
@@ -82,7 +100,7 @@ export default function MetronomeModeScreen({
 
   const onReset = () => {
     setSubdivisions([...preset.INITIAL_SUBDIVISIONS]);
-    setSoundMap(preset.DEFAULT_SOUND_MAP.map((r) => [...r]));
+    setSoundMap(preset.DEFAULT_SOUND_MAP.map((r) => [...(r as SoundRole[])]));
     setActiveEvent(null);
   };
 
@@ -92,77 +110,83 @@ export default function MetronomeModeScreen({
   const styles = getStyles(theme);
 
   return (
-    <View style={{ flex: 1, paddingBottom: insets.bottom }}>
-      <View style={styles.main}>
-        <View style={styles.headerRow}>
-          {onBack && (
-            <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-              <Text style={styles.backBtnText}>← Inicio</Text>
-            </TouchableOpacity>
-          )}
-          <Text style={styles.title}>{preset.label}</Text>
-        </View>
-
-        <View style={styles.bpmContainer}>
-          <BpmWheel
-            value={bpm}
-            onChange={(n) => setBpm(clampBpm(n))}
-            min={30}
-            max={300}
-          />
-          <TapTempo onBpmChange={(n) => setBpm(n)} min={30} max={300} />
-        </View>
-
-        <View style={styles.beatsContainer}>
-          <View
-            style={[
-              styles.circleWrap,
-              { width: circleSize, height: circleSize },
-            ]}
-          >
-            <CircleSubdivisions
-              size={circleSize}
-              cycleMs={cycleMs}
-              subdivisions={subdivisions}
-              structuralPattern={preset.STRUCTURAL_PATTERN}
-              activeEvent={activeEvent}
-              soundMap={soundMap}
-              onDotPress={onDotPress}
-            />
-            <View style={styles.playOverlay} pointerEvents="box-none">
-              <VariablePulsePlayer
-                bpm={bpm}
-                structuralPattern={preset.STRUCTURAL_PATTERN}
-                subdivisions={subdivisions}
-                soundMap={soundMap}
-                onActive={setActiveEvent}
-                onReset={onReset}
-              />
-            </View>
+    <FlatList
+      data={[0]}
+      keyExtractor={() => "content"}
+      renderItem={() => null}
+      contentContainerStyle={{ paddingBottom: insets.bottom }}
+      ListHeaderComponent={
+        <View style={styles.main}>
+          <View style={styles.headerRow}>
+            {onBack && (
+              <TouchableOpacity style={styles.backBtn} onPress={onBack}>
+                <Text style={styles.backBtnText}>← Home</Text>
+              </TouchableOpacity>
+            )}
+            <Text style={styles.title}>{preset.label}</Text>
           </View>
 
-          <SubdivisionSelector
-            names={SECTION_NAMES}
-            subdivisions={subdivisions}
-            onChange={setSubdivisionForSection}
-          />
+          <View style={styles.bpmContainer}>
+            <BpmWheel
+              value={bpm}
+              onChange={(n) => setBpm(clampBpm(n))}
+              min={30}
+              max={300}
+            />
+            <TapTempo onBpmChange={(n) => setBpm(n)} min={30} max={300} />
+          </View>
+
+          <View style={styles.beatsContainer}>
+            <View
+              style={[
+                styles.circleWrap,
+                { width: circleSize, height: circleSize },
+              ]}
+            >
+              <CircleSubdivisions
+                size={circleSize}
+                cycleMs={cycleMs}
+                subdivisions={subdivisions}
+                structuralPattern={preset.STRUCTURAL_PATTERN}
+                activeEvent={activeEvent}
+                soundMap={soundMap}
+                onDotPress={onDotPress}
+              />
+              <View style={styles.playOverlay} pointerEvents="box-none">
+                <VariablePulsePlayer
+                  bpm={bpm}
+                  structuralPattern={preset.STRUCTURAL_PATTERN}
+                  subdivisions={subdivisions}
+                  soundMap={soundMap}
+                  onActive={setActiveEvent}
+                  onReset={onReset}
+                />
+              </View>
+            </View>
+
+            <SubdivisionSelector
+              names={SECTION_NAMES}
+              subdivisions={subdivisions}
+              onChange={setSubdivisionForSection}
+              mtype={preset.meter}
+            />
+          </View>
         </View>
-      </View>
-    </View>
+      }
+    />
   );
 }
 
 const getStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
     main: {
-      flex: 1,
-      height: "100%",
       width: "100%",
       paddingHorizontal: 10,
-      backgroundColor: theme.background,
+      backgroundColor: theme.ui.background,
       alignItems: "center",
       justifyContent: "flex-start",
       marginBottom: 5,
+      gap: 12,
     },
     headerRow: {
       alignItems: "center",
@@ -170,6 +194,7 @@ const getStyles = (theme: typeof Colors.light) =>
       width: "100%",
       gap: 4,
       flexDirection: "row",
+      marginTop: 4,
     },
     backBtn: {
       alignSelf: "flex-start",
@@ -177,26 +202,36 @@ const getStyles = (theme: typeof Colors.light) =>
       paddingVertical: 6,
       borderRadius: 8,
       borderWidth: 1,
-      borderColor: theme.metronome.muted,
+      borderColor: theme.ui.divider,
+      backgroundColor: theme.ui.surface,
+      ...(Platform.OS === "ios"
+        ? {
+            shadowColor: theme.ui.text,
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.12,
+            shadowRadius: 2,
+          }
+        : { elevation: 1 }),
     },
     backBtnText: {
-      color: theme.text,
+      color: theme.ui.text,
       textAlign: "left",
+      fontWeight: "600",
     },
-    title: { fontSize: 18, fontWeight: "700", color: theme.text },
+    title: { fontSize: 18, fontWeight: "700", color: theme.ui.text },
 
     bpmContainer: {
-      marginBottom: 20,
+      marginBottom: 8,
       gap: 8,
       alignItems: "center",
       flexDirection: "row",
       justifyContent: "center",
+      width: "100%",
     },
 
     beatsContainer: {
       alignItems: "center",
       justifyContent: "space-around",
-      flex: 1,
       gap: 12,
       width: "100%",
       marginTop: 5,
@@ -211,18 +246,18 @@ const getStyles = (theme: typeof Colors.light) =>
     btn: {
       paddingHorizontal: 12,
       paddingVertical: 8,
-      backgroundColor: theme.tint,
+      backgroundColor: theme.ui.accent,
       borderWidth: 2,
-      borderColor: theme.metronome.activeGlow,
+      borderColor: theme.ui.accent,
       borderRadius: 8,
       ...(Platform.OS === "ios"
         ? {
-            shadowColor: theme.text,
+            shadowColor: theme.ui.text,
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.25,
             shadowRadius: 3.84,
           }
         : { elevation: 5 }),
     },
-    btnText: { fontSize: 14, fontWeight: "bold", color: theme.text },
+    btnText: { fontSize: 14, fontWeight: "bold", color: theme.ui.background },
   });

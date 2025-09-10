@@ -1,11 +1,9 @@
 import React, { useMemo, useRef, useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { View } from "react-native";
 import { sectionsFromPattern } from "../constants/Pulse";
-import type { ActiveEvent } from "../types/Metronome";
+import type { ActiveEvent, SoundRole } from "../types/Metronome";
 import Dot from "./Dot";
 import { useTheme } from "../contexts/ThemeContext";
-
-export type SoundType = "clave" | "sub" | "accent" | "silence";
 
 type DotData = {
   key: string;
@@ -21,9 +19,9 @@ type Props = {
   cycleMs: number;
   subdivisions: number[];
   structuralPattern: readonly number[];
-  phaseUnits?: number; // <—
+  phaseUnits?: number;
   activeEvent: ActiveEvent | null;
-  soundMap: string[][];
+  soundMap: SoundRole[][];
   onDotPress: (sectionIdx: number, k: number) => void;
 };
 
@@ -51,6 +49,7 @@ export default function CircleSubdivisions({
       sectionsFromPattern({ cycleMs, pattern: structuralPattern, phaseUnits }),
     [cycleMs, structuralPattern, phaseUnits]
   );
+
   const dotsData = useMemo(() => {
     const arr: DotData[] = [];
     if (sections.length === 0) return [];
@@ -70,52 +69,53 @@ export default function CircleSubdivisions({
     }
     return arr;
   }, [sections, subdivisions, cycleMs, center, radius]);
+
   const romanBySection = ["I", "II", "III", "IV", "V"] as const;
-  const LABEL_INSET = 28; // px hacia ADENTRO del círculo desde el dot
+  const LABEL_INSET = 28;
+
   return (
     <View
-      style={[
-        {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          borderColor: theme.metronome.muted,
-          backgroundColor: theme.background,
-        },
-      ]}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+      }}
     >
       {dotsData.map((d) => {
         const deg = (d.angle + Math.PI / 2) * (180 / Math.PI);
         const isActive =
           activeEvent?.section === d.sectionIdx && activeEvent?.k === d.k;
 
-        const soundType = (soundMap[d.sectionIdx]?.[d.k] ?? "sub") as
-          | "clave"
-          | "sub"
-          | "accent"
-          | "silence";
-        const isSilenced = soundType === "silence";
-        const bgColor = isSilenced
-          ? theme.metronome.muted
-          : soundType === "clave"
-          ? theme.metronome.clave
-          : soundType === "accent"
-          ? theme.metronome.accent
-          : theme.metronome.sub;
+        const role: SoundRole =
+          (soundMap[d.sectionIdx]?.[d.k] as SoundRole) ?? "cajon_relleno";
+        const isSilenced = role === "silence";
 
-        const showRoman = d.k === 0 && soundType === "clave";
-        let label: string | undefined,
-          labelX: number | undefined,
-          labelY: number | undefined;
+        const bgColor =
+          role === "silence"
+            ? theme.metronome.silence
+            : role === "click"
+            ? theme.metronome.click
+            : role === "cencerro"
+            ? theme.metronome.cencerro
+            : role === "cajon_grave"
+            ? theme.metronome.cajon_grave
+            : role === "cajon_agudo"
+            ? theme.metronome.cajon_agudo
+            : theme.metronome.cajon_relleno;
+
+        // ⬅️ Siempre mostrar label en el head (k === 0), sin importar el rol
+        const showRoman = d.k === 0;
+        let label: string | undefined;
+        let labelX: number | undefined;
+        let labelY: number | undefined;
 
         if (showRoman) {
           label = romanBySection[d.sectionIdx] ?? String(d.sectionIdx + 1);
-          // Vector del dot hacia el CENTRO:
           const dx = size / 2 - d.x;
           const dy = size / 2 - d.y;
           const len = Math.max(1, Math.hypot(dx, dy));
-          const ux = dx / len,
-            uy = dy / len; // unitario hacia el centro
+          const ux = dx / len;
+          const uy = dy / len;
           labelX = d.x + ux * LABEL_INSET;
           labelY = d.y + uy * LABEL_INSET;
         }
